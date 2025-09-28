@@ -5,11 +5,10 @@ from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.table import data
-from app.services.userDetailsService import encryptPassword, getIdFromJwt
+from app.services.userDetailsService import getIdFromJwt
 from app.models.schema.userDetailsSchema import LoginDetailsModel
+from app.services.scrapingService import loginToKentVision
 from app.dependencies import getDb
-
-import jwt
 
 detailsRouter = APIRouter()
 
@@ -17,8 +16,10 @@ detailsRouter = APIRouter()
 Send a POST request to grab the users login, so that their specific 
 timetable can be webscraped from KentVision.
 """
+
+# TODO: Use sent details to login to KentVision with selenium
 @detailsRouter.post("/scraping-service/v1/get-login-details")
-async def grabUserLoginDetails(details: LoginDetailsModel, 
+async def getBaseTimetable(details: LoginDetailsModel, 
                                Authorization: Annotated[str | None, Header()] = None,
                                db: AsyncSession = Depends(getDb)):
     
@@ -32,6 +33,8 @@ async def grabUserLoginDetails(details: LoginDetailsModel,
     # check if the Auth header was recieved.
     if Authorization is None:
         raise jwt_exception
+    
+    baseTimetableHtml = await loginToKentVision(details.email, details.password)
 
     """
     Parse the jwt for the users ID. Don't need to worry about validating the JWT since
@@ -43,7 +46,6 @@ async def grabUserLoginDetails(details: LoginDetailsModel,
     user_details = data.Data (
     user_id = users_id,
     email = details.email,
-    password = await encryptPassword(details.password),
     )
     
     db.add(user_details)
