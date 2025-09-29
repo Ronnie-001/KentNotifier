@@ -40,7 +40,7 @@ async def getBaseTimetable(details: LoginDetailsModel,
     Parse the jwt for the users ID. Don't need to worry about validating the JWT since
     JWT validaion is handled using the KrakenD API gateway.
     """
-    users_id = getIdFromJwt(Authorization.split(" "))
+    users_id = await getIdFromJwt(Authorization.split(" "))
     
     # add a new user into the database, accociate the user's ID with their KentVision details.
     user_details = data.Data (

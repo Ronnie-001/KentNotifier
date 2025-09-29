@@ -2,6 +2,9 @@ FROM python:3.13-alpine
 
 WORKDIR /app
 
+# Install ChromeDriver, chromium for selenium
+RUN apk add --no-cache chromium chromium-chromedriver
+
 # copy the requirements.txt file
 COPY requirements.txt /app/requirements.txt
 

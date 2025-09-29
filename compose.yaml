@@ -4,7 +4,6 @@ name: kent-notifier
 
 services:
 # ------------------------------------LOGIN SERVICE AND DATABASE----------------------------------
-
   login-service:
     build: ./services/login-service/app/
     ports:
@@ -66,7 +65,6 @@ services:
 # ------------------------------------------------------------------------------------------------
 
 # ----------------------------------------API GATEWAY---------------------------------------------
-
   krakend: 
     image: krakend 
     ports:
