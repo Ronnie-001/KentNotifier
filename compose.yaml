@@ -41,6 +41,8 @@ services:
       scraping-service-db:
         condition: service_healthy
         restart: true
+    volumes:
+      - ./debug_output:/app/debug_output
 
   scraping-service-db:
     image: postgres:17-alpine
