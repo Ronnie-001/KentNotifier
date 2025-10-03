@@ -34,7 +34,7 @@ async def getBaseTimetable(details: LoginDetailsModel,
     if Authorization is None:
         raise jwt_exception
     
-    baseTimetableHtml = await loginToKentVision(details.email, details.password)
+    baseTimetableHtml = loginToKentVision(details.email, details.password)
 
     """
     Parse the jwt for the users ID. Don't need to worry about validating the JWT since
