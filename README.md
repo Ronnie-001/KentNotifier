@@ -6,8 +6,8 @@ A notification system that notifies students from the University of Kent on chan
 
 # Current Endpoints
 ## Login Service:
-`/login-service/auth/v1/signup`: Users sign up for the service.
-`login-serive/auth/v1/signin`: Users sign into the service, recieving a JWT.
+- `/login-service/auth/v1/signup`: Users sign up for the service.
+- `login-serive/auth/v1/signin`: Users sign into the service, recieving a JWT.
 ## Scraping Service:
-`/scraping-service/v1/get-login-details`: User's provide thier details for KentVision; automation of login so their timetable can be webscraped.
-`/scraping-service/v1/webscrape-timetable` (*IN PROGRESS*): The scraping service will periodically webscrape KentVision to detect any changes to the user's timetable throughout the term. 
+- `/scraping-service/v1/get-login-details`: User's provide thier details for KentVision; automation of login so their timetable can be webscraped.
+- `/scraping-service/v1/webscrape-timetable` (*IN PROGRESS*): The scraping service will periodically webscrape KentVision to detect any changes to the user's timetable throughout the term. 
