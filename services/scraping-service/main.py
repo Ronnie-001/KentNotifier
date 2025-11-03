@@ -1,22 +1,35 @@
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from app.routes import DetailsRouter, ScrapingRouter
+from contextlib import asynccontextmanager
+
+from app.routes.scrapingRouter import checkForUpdate, redis_server, baseTimetableKey
+
+from app.routes import BaseTimetableRouter, scrapingRouter
 from app.database.dbconn import Base, engine
+
+# Mainly used for testing purposes
+async def DropAndCreateDbTables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
 
 
 # Bind all the tables to the engine so that the tables will be created.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+    # Create and drop the database
+    await DropAndCreateDbTables()
+     
+    # Init boolean value to check if the base timetable has been webscraped
+    redis_server.set(baseTimetableKey, 'False') 
+
+    # everything after 'yeild' is what happens when the application shuts down
     yield
 
 app = FastAPI(lifespan=lifespan)
 
 # include the different routers.
-app.include_router(DetailsRouter.detailsRouter)
-app.include_router(ScrapingRouter.scrapingRouter)
+app.include_router(BaseTimetableRouter.detailsRouter)
+app.include_router(scrapingRouter.scrapingRouter)
 
 # test endpoint
 @app.get("/scraping-service/v1/test")

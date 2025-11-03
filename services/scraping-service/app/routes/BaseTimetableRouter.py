@@ -4,8 +4,6 @@ from fastapi.exceptions import HTTPException
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.table import data
-from app.services.userDetailsService import getIdFromJwt
 from app.models.schema.userDetailsSchema import LoginDetailsModel
 from app.services.scrapingService import loginToKentVision
 from app.dependencies import getDb
@@ -22,7 +20,7 @@ timetable can be webscraped from KentVision.
 async def getBaseTimetable(details: LoginDetailsModel, 
                                Authorization: Annotated[str | None, Header()] = None,
                                db: AsyncSession = Depends(getDb)):
-    
+
     # throw an exception if no authorisation headers are found
     jwt_exception = HTTPException(
         status_code=401,
@@ -34,7 +32,7 @@ async def getBaseTimetable(details: LoginDetailsModel,
     if Authorization is None:
         raise jwt_exception
     
-    baseTimetableHtml = loginToKentVision(details.email, details.password)
+    loginToKentVision(details.email, details.password)
 
     """
     Parse the jwt for the users ID. Don't need to worry about validating the JWT since
@@ -44,8 +42,10 @@ async def getBaseTimetable(details: LoginDetailsModel,
     
     # add a new user into the database, accociate the user's ID with their KentVision details.
     user_details = data.Data (
-    user_id = users_id,
-    email = details.email,
+        user_id = users_id,
+        email = details.email,
+        base_timetable = baseTimetableHtml,
+        user_cookies = cookies
     )
     
     db.add(user_details)

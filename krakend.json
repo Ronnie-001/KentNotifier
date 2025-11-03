@@ -27,6 +27,7 @@
 
         {
             "endpoint": "/scraping-service/v1/get-login-details",
+            "timeout": "60s",
             "method": "POST",
             "input_headers": [
                 "Authorization"
@@ -52,7 +53,7 @@
 
         {
             "endpoint": "/scraping-service/v1/webscrape-timetable",
-            "method": "GET",
+            "method": "POST",
             "input_headers": [
                 "Authorization"
             ],
@@ -69,29 +70,7 @@
            "backend": [
                 {
                     "url_pattern": "/scraping-service/v1/webscrape-timetable",
-                    "method": "GET",
-                    "host": ["http://scraping-service:8001"]
-                }
-            ]
-        },
-
-        {
-            "endpoint": "/scraping-service/v1/test",
-            "method": "GET",
-            "extra_config": {
-               "auth/validator": {
-                   "alg": "HS512",
-                   "jwk_local_path": "./jwk.txt", 
-                   "audience": ["scraping", "notification"],
-                   "operation_debug": true,
-                   "disable_jwk_security": true,
-                   "cache": false
-               }
-            },
-           "backend": [
-                {
-                    "url_pattern": "/scraping-service/v1/test",
-                    "method": "GET",
+                    "method": "POST",
                     "host": ["http://scraping-service:8001"]
                 }
             ]
