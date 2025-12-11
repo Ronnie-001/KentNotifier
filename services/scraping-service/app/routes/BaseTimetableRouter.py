@@ -2,10 +2,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header
 from fastapi.exceptions import HTTPException
 
+from selenium.webdriver.support.wait import WebDriverWait
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.schema.userDetailsSchema import LoginDetailsModel
-from app.services.scrapingService import loginToKentVision
+from app.models.table import data
+from app.services.scrapingService import findBaseTimetable, loginToKentVision
+from app.services.userDetailsService import getIdFromJwt
 from app.dependencies import getDb
 
 detailsRouter = APIRouter()
@@ -15,11 +18,10 @@ Send a POST request to grab the users login, so that their specific
 timetable can be webscraped from KentVision.
 """
 
-# TODO: Use sent details to login to KentVision with selenium
 @detailsRouter.post("/scraping-service/v1/get-login-details")
 async def getBaseTimetable(details: LoginDetailsModel, 
-                               Authorization: Annotated[str | None, Header()] = None,
-                               db: AsyncSession = Depends(getDb)):
+                           Authorization: Annotated[str | None, Header()] = None,
+                           db: AsyncSession = Depends(getDb)):
 
     # throw an exception if no authorisation headers are found
     jwt_exception = HTTPException(
@@ -32,7 +34,15 @@ async def getBaseTimetable(details: LoginDetailsModel,
     if Authorization is None:
         raise jwt_exception
     
-    loginToKentVision(details.email, details.password)
+    driver = loginToKentVision(details.email, details.password)
+
+    # Add explicit waits so next webpage can load properly
+    wait = WebDriverWait(driver, timeout=30)
+    
+    # Find the base timetable data
+    baseTimetableHtml = findBaseTimetable(driver, wait)
+
+    print("[LOGS] " + baseTimetableHtml)
 
     """
     Parse the jwt for the users ID. Don't need to worry about validating the JWT since
@@ -45,7 +55,6 @@ async def getBaseTimetable(details: LoginDetailsModel,
         user_id = users_id,
         email = details.email,
         base_timetable = baseTimetableHtml,
-        user_cookies = cookies
     )
     
     db.add(user_details)

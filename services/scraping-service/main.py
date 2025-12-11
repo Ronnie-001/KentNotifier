@@ -1,10 +1,9 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
-from app.routes.scrapingRouter import checkForUpdate, redis_server, baseTimetableKey
-
 from app.routes import BaseTimetableRouter, scrapingRouter
 from app.database.dbconn import Base, engine
+from app.dependencies import redis_server, baseTimetableKey
 
 # Mainly used for testing purposes
 async def DropAndCreateDbTables():

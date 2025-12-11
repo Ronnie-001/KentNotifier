@@ -75,9 +75,9 @@ services:
 
 # ----------------------------------------API GATEWAY---------------------------------------------
   krakend: 
-    image: krakend 
+    image: krakend
     ports:
-      - "8080:8080" 
+      - 8080:8080 
     volumes:
       # bind the kraken.json config file & the jwk.txt file to the volume.
       - ./krakend.json:/etc/krakend/krakend.json

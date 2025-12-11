@@ -2,14 +2,14 @@ import os
 
 from selenium import webdriver
 from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
-
+from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from app.routes.scrapingRouter import redis_server, baseTimetableKey
+from app.dependencies import redis_server, baseTimetableKey
 
-def getChromeDriver():
+def getChromeDriver() -> WebDriver:
     # Set the options for the chrome driver that we will recieve.
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--headless")
@@ -20,13 +20,11 @@ def getChromeDriver():
 
     return driver
 
-""" 
-TODO: implement manual login for selenium here.
-Function will be used to return the HTML of the base timetable to store 
-in the scraping service database.
+""""
+Set the driver to the return type so that we can access the current state (the logged in user) 
+for other things.
 """
-def loginToKentVision(email: str, password: str):
-        
+def loginToKentVision(email: str, password: str) -> WebDriver:
     kentVisionWebsite = "https://evision.kent.ac.uk/urd/sits.urd/run/siw_lgn" 
     
     # Init the webdriver for chrome
@@ -99,20 +97,16 @@ def loginToKentVision(email: str, password: str):
         takeScreenshot(driver)
             
         print(baseTimetableKey)
-
-        cookies = driver.get_cookies();
-
-        html = findBaseTimetable(driver, wait)
     
         redis_server.set(baseTimetableKey, 'True')
 
-        print(html)
-
-        driver.quit()
+        return driver
 
     except Exception as e:
         print("[ERROR] Ran into an error: " + str(e))
         takeScreenshot(driver)
+
+    return driver
 #         
 #         html = findBaseTimetable(driver, wait)
 # 
@@ -417,4 +411,3 @@ def getBaseTimetableData(driver) -> str:
     timetableHTML = timetable.get_attribute("outerHTML")
 
     return timetableHTML
-
