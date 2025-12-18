@@ -7,7 +7,7 @@ async def getDb():
         yield session
 
 # Configure the redis server
-redis_server = redis.Redis(
+redis = redis.Redis(
     host='redis', 
     port=6379, 
     decode_responses=True)

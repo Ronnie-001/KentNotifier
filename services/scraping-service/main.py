@@ -3,7 +3,6 @@ from contextlib import asynccontextmanager
 
 from app.routes import BaseTimetableRouter, scrapingRouter
 from app.database.dbconn import Base, engine
-from app.dependencies import redis_server, baseTimetableKey
 
 # Mainly used for testing purposes
 async def DropAndCreateDbTables():
@@ -18,9 +17,6 @@ async def lifespan(app: FastAPI):
     # Create and drop the database
     await DropAndCreateDbTables()
      
-    # Init boolean value to check if the base timetable has been webscraped
-    redis_server.set(baseTimetableKey, 'False') 
-
     # everything after 'yeild' is what happens when the application shuts down
     yield
 

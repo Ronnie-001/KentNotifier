@@ -33,23 +33,21 @@ async def getBaseTimetable(details: LoginDetailsModel,
     # check if the Auth header was recieved.
     if Authorization is None:
         raise jwt_exception
-    
-    driver = loginToKentVision(details.email, details.password)
-
-    # Add explicit waits so next webpage can load properly
-    wait = WebDriverWait(driver, timeout=30)
-    
-    # Find the base timetable data
-    baseTimetableHtml = findBaseTimetable(driver, wait)
-
-    print("[LOGS] " + baseTimetableHtml)
 
     """
     Parse the jwt for the users ID. Don't need to worry about validating the JWT since
     JWT validaion is handled using the KrakenD API gateway.
     """
     users_id = await getIdFromJwt(Authorization.split(" "))
-    
+
+    driver = loginToKentVision(details.email, details.password, users_id)
+    # Add explicit waits so next webpage can load properly
+    wait = WebDriverWait(driver, timeout=30)
+    # Find the base timetable data
+    baseTimetableHtml = findBaseTimetable(driver, wait)
+
+    print("[LOGS] " + baseTimetableHtml)
+   
     # add a new user into the database, accociate the user's ID with their KentVision details.
     user_details = data.Data (
         user_id = users_id,

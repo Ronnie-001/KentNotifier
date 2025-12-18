@@ -13,6 +13,8 @@ RUN apk add --no-cache --virtual .build-deps gcc python3-dev musl-dev linux-head
     && pip install --no-cache-dir --upgrade -r /app/requirements.txt \
     && apk del .build-deps
 
+ENV PYTHONUNBUFFERED=1
+
 COPY . .
 
 EXPOSE 8001

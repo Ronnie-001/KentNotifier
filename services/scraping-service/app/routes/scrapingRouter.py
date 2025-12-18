@@ -1,4 +1,3 @@
-from datetime import time
 from typing import Annotated, Tuple
 from fastapi import APIRouter, Depends, Header, HTTPException
 
@@ -13,9 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.schema.userDetailsSchema import WebscrapeTimetableModel
 from app.dependencies import getDb
 from app.models.table.data import Data
-from app.services.scrapingService import calculateCurrentDayOfYear, getBaseTimetableData, getCurrentDayOfYear, loginToKentVision
+from app.services.scrapingService import calculateCurrentDayOfYear, getBaseTimetableData, getCurrentDayOfYear
 from app.services.userDetailsService import getIdFromJwt
-from app.dependencies import redis_server, baseTimetableKey
+from app.dependencies import redis, baseTimetableKey
 
 from bs4 import BeautifulSoup
 
@@ -29,31 +28,32 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
                          Authorization: Annotated[str | None, Header()] = None,  
                          db: AsyncSession = Depends(getDb)):
 
-    # Check if the base timetable has been webscraped
-    if redis_server.get(baseTimetableKey) == 'True':
-        
-        # Check is the Auth header is there
-        jwt_exception = HTTPException(
-            status_code=401,
-            detail="Could not extract the JWT from the 'Authorization' header.",
-            headers={"WWW-Authenticate" : "Bearer"},
-        )
-        
-        if Authorization is None:
-            raise jwt_exception
+    # Check is the Auth header is there
+    jwt_exception = HTTPException(
+        status_code=401,
+        detail="Could not extract the JWT from the 'Authorization' header.",
+        headers={"WWW-Authenticate" : "Bearer"},
+    )
+    
+    if Authorization is None:
+        raise jwt_exception
 
-        # Grab the user's ID for database lookup
-        userId = await getIdFromJwt(Authorization.split(" "))
+    # Grab the user's ID for database lookup
+    user_id = await getIdFromJwt(Authorization.split(" "))
+
+    # Check if the base timetable has been webscraped
+    if redis.get(baseTimetableKey) == 'True':
         
         # Grab the base timetable data from the database
-        stmt = select(Data.base_timetable).where(Data.user_id == userId)
+        stmt = select(Data.base_timetable).where(Data.user_id == user_id)
         result = await db.execute(stmt)
         baseTimetableHtml = result.scalar()
 
         # TODO: Implement way to parse the base timetable for the lectures/classes
         soup = BeautifulSoup(str(baseTimetableHtml), "html.parser") 
         timetable = soup.find('ul', class_='sitsjqttitems')
-        baseTimetable_data = collectBaseTimetableData(soup)
+
+        collectBaseTimetableData(soup)
 
 #        driver = loginToKentVision(details.email, details.password)
 #        
@@ -190,25 +190,29 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
         # Function uses an explicit wait to grab the current day.
         currentDay = getCurrentDayOfYear(driver, wait)
         
-    if len(newData) is not 0:
+    if len(newData) != 0:
         return True, newData, currentDay
 
     return False, [""], -1
 
 
 # TODO: Implement function to collect the information from each lecture/class into an array.
-def collectBaseTimetableData(soup) -> list[str]:
+def collectBaseTimetableData(soup):
     # Filter the HTML based on the classes applied to each lecture/class
     timetable = soup.find('ul', class_='sitsjqttitems')
 
     # Only select the HTML that applies these specific classes
     timetable_list = timetable.select('.sv-panel.sv-panel-default.sitsjqttitem.sitsjqttevent.sitsjqtteventhover.sv-tooltip-filter')
+    
+    data = []
 
     # Loop through the list and parse each activity for impotant info (date, time, module code, etc)
     for activity in timetable_list:
-        pass
+        content = activity.select_one(".sv-row .sv-col-xs-12 div")
+        event_data = list(content.stripped_strings)
+        data.append(event_data)
 
-    return [""]
+    print(data)
 
 
 # TODO: Implement function to find all the differences between the timetables.

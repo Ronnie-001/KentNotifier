@@ -1,4 +1,5 @@
 import os
+import time
 
 from selenium import webdriver
 from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
@@ -7,7 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from app.dependencies import redis_server, baseTimetableKey
+from app.dependencies import redis, baseTimetableKey
 
 def getChromeDriver() -> WebDriver:
     # Set the options for the chrome driver that we will recieve.
@@ -24,15 +25,21 @@ def getChromeDriver() -> WebDriver:
 Set the driver to the return type so that we can access the current state (the logged in user) 
 for other things.
 """
-def loginToKentVision(email: str, password: str) -> WebDriver:
+def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
     kentVisionWebsite = "https://evision.kent.ac.uk/urd/sits.urd/run/siw_lgn" 
-    
+
     # Init the webdriver for chrome
     driver = getChromeDriver()
 
     # Add explicit waits so next webpage can load properly
     wait = WebDriverWait(driver, timeout=30)
     
+    # Set the current state of the user to 'logging in'
+    redis.hset(f"user:{user_id}:state", mapping={
+                    "status":"LOGGING_IN",
+                    "mfa_code": "NULL",
+               })
+
     # Navigate to the KentVision Application Portal.
     driver.get(kentVisionWebsite)
     studentApplicationPortalButton = driver.find_element(By.ID, "kent-student-login-button")
@@ -60,8 +67,6 @@ def loginToKentVision(email: str, password: str) -> WebDriver:
         ))
     )
 
-    takeScreenshot(driver)
-
     # Use provided password in the input field
     passwordInput = driver.find_element(By.ID, "i0118")
     passwordInput.send_keys(password) 
@@ -71,20 +76,26 @@ def loginToKentVision(email: str, password: str) -> WebDriver:
         print("[LOGS] Sign in button clicked!")
 
     print("[LOGS] Waiting for the next page to appear...")
-
-    wait.until(
-       EC.visibility_of_element_located((
-       By.XPATH, 
-       "//*[contains(text(), 'Stay signed in?')]"
-       ))
-    )
-
-    check = clickElement("idSIButton9", driver, wait)
-
-    if check:
-        print("[LOGS] 'yes' pressed for stay signed in option!")
-
+    
     try:
+        # Check if the 'Stay signed in? In on screen instead
+        wait.until(
+            EC.visibility_of_element_located((
+            By.XPATH, 
+            "//*[contains(text(), 'Stay signed in?')]"
+            ))
+        )
+
+        print("[LOGS] Stay signed in page found!")
+       
+        driver.implicitly_wait(5)
+
+        yesButton = driver.find_element(By.ID, "idSIButton9") 
+        yesButton.click()
+
+        driver.implicitly_wait(5)
+        
+        # Check for the main homepage
         wait.until(
             EC.visibility_of_element_located((
             By.XPATH, 
@@ -92,127 +103,74 @@ def loginToKentVision(email: str, password: str) -> WebDriver:
             ))
         )
 
-        print("[LOGS] Homepage found!")
+        print("[LOGS] Main Homepage found!")
 
+        # Set the current state of the user to 'logging in'
+        redis.hset(f"user:{user_id}:state", mapping={
+                        "status":"MFA_WAITING",
+                        "mfa_code": "NULL",
+                   })
+
+        return driver 
+
+    except TimeoutException:
+        print("[ERROR] Error when trying to log in! TimeoutException caught!")
+        print("[LOGS] Checking if MFA page was seen instead...")
+        
         takeScreenshot(driver)
+
+        # Check if the MFA Code appears instead. 
+        try:
+            wait.until(
+               EC.visibility_of_element_located((
+                    By.XPATH, 
+                    "//*[contains(text(), 'Approve sign in request')]"
+               ))
+            )
             
-        print(baseTimetableKey)
+            # Extract the MFA code from the webpage
+            mfaAuthElement = driver.find_element(By.ID, "idRichContext_DisplaySign")
+            mfaAuthNumber = mfaAuthElement.text
+            print("[LOGS] MFA Number found!: " + mfaAuthNumber)
+
+            # Set the current state of the user to 'MFA_WAITING'
+            redis.hset(f"user:{user_id}:state", mapping={
+                            "status":"MFA_WAITING",
+                            "mfa_code": mfaAuthNumber,
+                       })
+            
+            # Check if the 'Stay signed in? In on screen instead
+            wait.until(
+                EC.visibility_of_element_located((
+                By.XPATH, 
+                "//*[contains(text(), 'Stay signed in?')]"
+                ))
+            )
+
+            # Set the current state of the user to 'SUCCESS'
+            redis.hset(f"user:{user_id}:state", mapping={
+                            "status":"SUCCESS",
+                            "mfa_code": mfaAuthNumber,
+                       })
+
+            print("[LOGS] MFA code entered!")
+            
+            yesButton = driver.find_element(By.ID, "idSIButton9") 
+            yesButton.click()
+
+            takeScreenshot(driver)
+
+            return driver
+
+        except TimeoutException:
+           print("[ERROR] Error when trying to log in! TimeoutException caught!")
+           takeScreenshot(driver)
     
-        redis_server.set(baseTimetableKey, 'True')
-
-        return driver
-
     except Exception as e:
         print("[ERROR] Ran into an error: " + str(e))
         takeScreenshot(driver)
 
     return driver
-#         
-#         html = findBaseTimetable(driver, wait)
-# 
-#         cookies = driver.get_cookies();
-# 
-#         redis_server.set(baseTimetableKey, 'True')
-# 
-#         driver.quit()
-
-#       return html, cookies 
-# 
-#     except TimeoutException:
-# 
-#         print("[LOGS] TimeoutException caught! Checking other possibility")
-#         try:
-# 
-#             wait.until(
-#                 EC.visibility_of_element_located((
-#                 By.XPATH, 
-#                 "//*[contains(text(), 'Stay signed in?')]"
-#                 ))
-#             )
-# 
-#             print("[LOGS] Stay signed in page found!")
-#             
-#             driver.implicitly_wait(5)
-# 
-#             yesButton = driver.find_element(By.ID, "idSIButton9") 
-#             yesButton.click()
-# 
-#             driver.implicitly_wait(5)
-#             
-#             # Check for the main homepage
-#             wait.until(
-#                 EC.visibility_of_element_located((
-#                 By.XPATH, 
-#                 "//*[contains(text(), 'Welcome to KentVision')]"
-#                 ))
-#             )
-# 
-#             print("[LOGS] Main Homepage found!")
-# 
-#             # Get the session cookies for the logged in user.
-#             cookies = driver.get_cookies()
-#             
-#             # After logging in, proceed to webscrape thier timetable.
-#             html = findBaseTimetable(driver, wait)                           
-#             
-#             # update value baseTimetableAqquried to True
-#             redis_server.set(baseTimetableKey, 'True')
-# 
-#             driver.quit()
-# 
-#             return html, cookies 
-# 
-#         except TimeoutException:
-#             print("[ERROR] Error when trying to log in! TimeoutException caught!")
-#             print("[LOGS] Checking if MFA page was seen instead...")
-#             
-#             takeScreenshot(driver)
-# 
-#             # Check if the MFA Code appears instead. 
-#             try:
-#                 wait.until(
-#                    EC.visibility_of_element_located((By.XPATH, "//*[contains(text(), 'Approve sign in request')]"))
-#                 )
-#                 
-#                 MFA_auth_number = driver.find_element(By.ID, "idRichContext_DisplaySign")
-#                 print("[LOGS] MFA Number found!: " + MFA_auth_number.text)
-# 
-#                 driver.quit()
-# 
-#                 return "NONE", [{"LOGS": "MFA"}]
-# 
-#             except TimeoutException:
-#                 print("[ERROR] Error when trying to log in! TimeoutException caught!")
-#                 print("[LOGS] Checking if the Homepage page was seen instead...")
-#                 
-#                 takeScreenshot(driver)
-# 
-#                 try:
-#                     wait.until(
-#                         EC.visibility_of_element_located((
-#                         By.XPATH, 
-#                         "//*[contains(text(), 'Welcome to KentVision')]"
-#                         ))
-#                     )
-#                 
-#                     print("[LOGS] Homepage found!")
-#                     
-#                     html = findBaseTimetable(driver, wait)
-# 
-#                     cookies = driver.get_cookies();
-# 
-#                     redis_server.set(baseTimetableKey, 'True')
-# 
-#                     driver.quit()
-# 
-#                     return html, cookies 
-#                 
-#                 except TimeoutException:
-#                     print("[ERROR] Error when trying to log in! TimeoutException caught!")
-#                     takeScreenshot(driver)
-# 
-#                     return "NONE", [{"ERROR": "NONE"}]
-
 """
 Use to avoid StaleElementReferenceExceptions when clicking an element, 
 most likley caused due to rapid changes in the DOM.
@@ -318,6 +276,8 @@ def findBaseTimetable(driver, wait) -> str:
             
         # Once you have found the base timetable, webscrape it.
         timetableData = getBaseTimetableData(driver)
+
+        redis.set(baseTimetableKey, 'True') 
 
         return timetableData
 
