@@ -1,4 +1,6 @@
 from fastapi import APIRouter
+from app.dependencies import redis
+
 
 statusRouter = APIRouter()
 
@@ -9,5 +11,4 @@ K/V store,
 
 @statusRouter.post("/scraping-service/v1/login-status/{userID}")
 def checkLoginStatus():
-    pass
-
+    pass    

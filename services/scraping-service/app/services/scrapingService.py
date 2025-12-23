@@ -1,5 +1,4 @@
 import os
-import time
 
 from selenium import webdriver
 from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
@@ -155,8 +154,11 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
 
             print("[LOGS] MFA code entered!")
             
+            # Go to the KentVison homepage
             yesButton = driver.find_element(By.ID, "idSIButton9") 
             yesButton.click()
+    
+            driver.implicitly_wait(20)
 
             takeScreenshot(driver)
 
@@ -171,6 +173,7 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
         takeScreenshot(driver)
 
     return driver
+
 """
 Use to avoid StaleElementReferenceExceptions when clicking an element, 
 most likley caused due to rapid changes in the DOM.
@@ -262,7 +265,7 @@ def findBaseTimetable(driver, wait) -> str:
 
         print("[LOGS] Current days into the year: " + str(currentDayofYear))
 
-        term1Start, term1End = 288, 346
+        term1Start, term1End = 288, 357
         term2Start, term2End = 19, 79
         term3Start, term3End = 110, 170
         
@@ -275,7 +278,7 @@ def findBaseTimetable(driver, wait) -> str:
             findBaseTimetableDate(currentDayofYear, term3Start, driver, wait)
             
         # Once you have found the base timetable, webscrape it.
-        timetableData = getBaseTimetableData(driver)
+        timetableData = extractTimetable(driver)
 
         redis.set(baseTimetableKey, 'True') 
 
@@ -288,6 +291,10 @@ def findBaseTimetable(driver, wait) -> str:
     return "NO TIMETABLE DATA"
 
 
+"""
+Function used to get the current day of the year on the 
+
+"""
 def getCurrentDayOfYear(driver, wait):
 
     wait.until(
@@ -366,7 +373,7 @@ def findBaseTimetableDate(currentDay, borderDay, driver, wait):
             print("[LOGS] New day found! " + str(currentDay))
 
 # Function used to grab the HTML data from the base timetable.
-def getBaseTimetableData(driver) -> str:
+def extractTimetable(driver) -> str:
     timetable = driver.find_element(By.CLASS_NAME, "sitsjqttitems")
     timetableHTML = timetable.get_attribute("outerHTML")
 

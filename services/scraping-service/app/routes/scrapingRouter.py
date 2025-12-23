@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.schema.userDetailsSchema import WebscrapeTimetableModel
 from app.dependencies import getDb
 from app.models.table.data import Data
-from app.services.scrapingService import calculateCurrentDayOfYear, getBaseTimetableData, getCurrentDayOfYear
+from app.services.scrapingService import calculateCurrentDayOfYear, extractTimetable, extractTimetable, getCurrentDayOfYear
 from app.services.userDetailsService import getIdFromJwt
 from app.dependencies import redis, baseTimetableKey
 
@@ -43,7 +43,6 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
 
     # Check if the base timetable has been webscraped
     if redis.get(baseTimetableKey) == 'True':
-        
         # Grab the base timetable data from the database
         stmt = select(Data.base_timetable).where(Data.user_id == user_id)
         result = await db.execute(stmt)
@@ -51,7 +50,6 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
 
         # TODO: Implement way to parse the base timetable for the lectures/classes
         soup = BeautifulSoup(str(baseTimetableHtml), "html.parser") 
-        timetable = soup.find('ul', class_='sitsjqttitems')
 
         collectBaseTimetableData(soup)
 
@@ -136,7 +134,6 @@ def lookForChanges(baseTimetableHtml: str, driver) -> Tuple[bool, list[str], int
 Function used to find any differences between the user's usual activities during the week
 and the current week being checked.
 """
-
 def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool, list[str], int]:
     
     # Use the term dates here to find out which term you are currenly in.
@@ -166,12 +163,12 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
         )
 
         # Extract the HTML of the current timetable present and compare
-        data = getBaseTimetableData(driver) 
+        data = extractTimetable(driver) 
         
         # Check if it differs from the base timetable 
         if (data != baseTimetableHtml):
             # Extract the current timetable
-            html = getBaseTimetableData(driver)            
+            html = extractTimetable(driver)            
             # Add the data into the list
             newData.append(html)
 
@@ -200,19 +197,20 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
 def collectBaseTimetableData(soup):
     # Filter the HTML based on the classes applied to each lecture/class
     timetable = soup.find('ul', class_='sitsjqttitems')
-
     # Only select the HTML that applies these specific classes
-    timetable_list = timetable.select('.sv-panel.sv-panel-default.sitsjqttitem.sitsjqttevent.sitsjqtteventhover.sv-tooltip-filter')
+    timetable_list = soup.find('ul', class_='sitsjqttitems').select('.sv-panel.sv-panel-default.sitsjqttitem.sitsjqttevent.sitsjqtteventhover.sv-tooltip-filter')
+    print(timetable_list)
     
     data = []
 
-    # Loop through the list and parse each activity for impotant info (date, time, module code, etc)
     for activity in timetable_list:
         content = activity.select_one(".sv-row .sv-col-xs-12 div")
         event_data = list(content.stripped_strings)
         data.append(event_data)
 
-    print(data)
+    # Loop through the list and parse each activity for important info (date, time, module code, etc)
+    for x in data:
+        print(str(x)+ "\n") 
 
 
 # TODO: Implement function to find all the differences between the timetables.

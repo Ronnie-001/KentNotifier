@@ -42,11 +42,11 @@ async def getBaseTimetable(details: LoginDetailsModel,
 
     driver = loginToKentVision(details.email, details.password, users_id)
     # Add explicit waits so next webpage can load properly
-    wait = WebDriverWait(driver, timeout=30)
+    wait = WebDriverWait(driver, timeout=50)
     # Find the base timetable data
     baseTimetableHtml = findBaseTimetable(driver, wait)
 
-    print("[LOGS] " + baseTimetableHtml)
+    print("[LOGS] TIMETABLE: " + baseTimetableHtml)
    
     # add a new user into the database, accociate the user's ID with their KentVision details.
     user_details = data.Data (

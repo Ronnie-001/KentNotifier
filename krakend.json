@@ -27,7 +27,7 @@
 
         {
             "endpoint": "/scraping-service/v1/get-login-details",
-            "timeout": "60s",
+            "timeout": "120s",
             "method": "POST",
             "input_headers": [
                 "Authorization"
