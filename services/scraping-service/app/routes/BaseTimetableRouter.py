@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.schema.userDetailsSchema import LoginDetailsModel
 from app.models.table import data
-from app.services.scrapingService import findBaseTimetable, loginToKentVision
+from app.services.scrapingService import findBaseTimetable, loginToKentVision, navigateToTimetable
 from app.services.userDetailsService import getIdFromJwt
 from app.dependencies import getDb
 
@@ -39,12 +39,22 @@ async def getBaseTimetable(details: LoginDetailsModel,
     JWT validaion is handled using the KrakenD API gateway.
     """
     users_id = await getIdFromJwt(Authorization.split(" "))
-
+    
     driver = loginToKentVision(details.email, details.password, users_id)
+
     # Add explicit waits so next webpage can load properly
-    wait = WebDriverWait(driver, timeout=50)
+    wait = WebDriverWait(driver, timeout=120)
+
+    # Nagivate to the timetable once logged in.
+    driver = navigateToTimetable(driver, wait)
+
     # Find the base timetable data
     baseTimetableHtml = findBaseTimetable(driver, wait)
+
+    # Close the chromium driver instance.
+    driver.quit()
+
+    print("[LOGS] Closed out of the selenium driver!")
 
     print("[LOGS] TIMETABLE: " + baseTimetableHtml)
    
@@ -60,4 +70,3 @@ async def getBaseTimetable(details: LoginDetailsModel,
     await db.refresh(user_details)
 
     return {"Email": details.email, "UserID" : users_id}
-

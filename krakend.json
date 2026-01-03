@@ -27,7 +27,7 @@
 
         {
             "endpoint": "/scraping-service/v1/get-login-details",
-            "timeout": "120s",
+            "timeout": "180s",
             "method": "POST",
             "input_headers": [
                 "Authorization"
@@ -53,6 +53,7 @@
 
         {
             "endpoint": "/scraping-service/v1/webscrape-timetable",
+            "timeout": "180s",
             "method": "POST",
             "input_headers": [
                 "Authorization"

@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from sqlalchemy.engine.interfaces import TableKey
 
 from app.dependencies import redis, baseTimetableKey
 
@@ -31,7 +32,7 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
     driver = getChromeDriver()
 
     # Add explicit waits so next webpage can load properly
-    wait = WebDriverWait(driver, timeout=30)
+    wait = WebDriverWait(driver, timeout=50)
     
     # Set the current state of the user to 'logging in'
     redis.hset(f"user:{user_id}:state", mapping={
@@ -44,6 +45,8 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
     studentApplicationPortalButton = driver.find_element(By.ID, "kent-student-login-button")
     studentApplicationPortalButton.click()
     print("[LOGS] Student and Staff Button clicked!")
+    
+    takeScreenshot(driver)
 
     wait.until(
         EC.visibility_of_element_located((
@@ -52,11 +55,16 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
         ))
     )
 
+    takeScreenshot(driver)
+
     # Use provided email in the input field
     emailInput = driver.find_element(By.ID, "i0116")
     emailInput.send_keys(email)
     nextButton = driver.find_element(By.ID, "idSIButton9")
     nextButton.click()
+
+    takeScreenshot(driver)
+
     print("[LOGS] Next button clicked!")
     
     wait.until(
@@ -75,7 +83,9 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
         print("[LOGS] Sign in button clicked!")
 
     print("[LOGS] Waiting for the next page to appear...")
-    
+
+    takeScreenshot(driver)
+
     try:
         # Check if the 'Stay signed in? In on screen instead
         wait.until(
@@ -158,7 +168,7 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
             yesButton = driver.find_element(By.ID, "idSIButton9") 
             yesButton.click()
     
-            driver.implicitly_wait(20)
+            driver.implicitly_wait(10)
 
             takeScreenshot(driver)
 
@@ -215,11 +225,10 @@ def takeScreenshot(driver):
 
     print(f"Path to the screenshot: {screen_shot_path}")   
 
-"""
-Function will return the HTML for the base timetable.
-"""
-def findBaseTimetable(driver, wait) -> str:
-        
+def navigateToTimetable(driver, wait) -> WebDriver:
+
+    print("[LOGS] Naviagting to timetable!")
+
     wait.until(
         EC.visibility_of_element_located((
         By.XPATH, 
@@ -261,11 +270,25 @@ def findBaseTimetable(driver, wait) -> str:
 
         print("[LOGS] Timetable found!")    
 
+        return driver
+
+    except TimeoutException as e:
+        print("[ERROR] Timeout exception caught!: " + str(e))
+        takeScreenshot(driver)
+
+    return driver
+
+"""
+Function will return the HTML for the base timetable.
+"""
+def findBaseTimetable(driver, wait) -> str:
+    try:
+
         currentDayofYear = getCurrentDayOfYear(driver, wait)
 
         print("[LOGS] Current days into the year: " + str(currentDayofYear))
 
-        term1Start, term1End = 288, 357
+        term1Start, term1End = 288, 365
         term2Start, term2End = 19, 79
         term3Start, term3End = 110, 170
         
@@ -310,6 +333,10 @@ def getCurrentDayOfYear(driver, wait):
 
     return currentDayofYear
 
+"""
+Function used to calculate the current day of the year of the FIRST day
+of the week (the monday) on the timtable.
+"""
 def calculateCurrentDayOfYear(text: str) -> int:
     """
     The map stores the cumuliative number of days BEFORE the month.
@@ -371,6 +398,7 @@ def findBaseTimetableDate(currentDay, borderDay, driver, wait):
 
             currentDay = getCurrentDayOfYear(driver, wait)
             print("[LOGS] New day found! " + str(currentDay))
+
 
 # Function used to grab the HTML data from the base timetable.
 def extractTimetable(driver) -> str:

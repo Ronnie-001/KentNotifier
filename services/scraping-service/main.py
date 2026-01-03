@@ -10,12 +10,11 @@ async def DropAndCreateDbTables():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
-
 # Bind all the tables to the engine so that the tables will be created.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create and drop the database
-    await DropAndCreateDbTables()
+    # await DropAndCreateDbTables()
      
     # everything after 'yeild' is what happens when the application shuts down
     yield
