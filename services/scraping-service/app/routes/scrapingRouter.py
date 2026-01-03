@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.schema.userDetailsSchema import WebscrapeTimetableModel
 from app.dependencies import getDb
 from app.models.table.data import Data
-from app.services.scrapingService import calculateCurrentDayOfYear, extractTimetable, getCurrentDayOfYear, loginToKentVision, navigateToTimetable
+from app.services.scrapingService import calculateCurrentDayOfYear, extractTimetable, getCurrentDayOfYear, loginToKentVision, navigateToTimetable, takeScreenshot
 from app.services.userDetailsService import getIdFromJwt
 from app.dependencies import redis, baseTimetableKey
 
@@ -92,28 +92,30 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
                 removed = baseTimetableSet - newDataSet
 
                 # TODO: Append the changed result to the res_dict
-                print("----------------[LOGS] FOR " + str(data) + "--------------------------")
+                print("----------------[LOGS] ADDED--------------------------")
                 print(added)
+
+                print("----------------[LOGS] REMOVED--------------------------")
                 print(removed)
         else:
             print("[LOGS] NO new events found!")
             
             return {"base_timetable_data" : "NONE_FOUND"} 
-
-        return {"base_timetable_data" : "SUCCESSFUL"} 
+        
+        return res_dict 
 
 """
 Function created to look for changes in the user's timetable.
 """
 def lookForChanges(baseTimetableHtml: str, driver) -> Tuple[bool, list[str]]:
-    wait = WebDriverWait(driver, timeout=30)    
+    wait = WebDriverWait(driver, timeout=50)    
     
     try:
         # Use an explicit wait to allow for the main timetable to load.
         wait.until(
             EC.visibility_of_element_located((
             By.ID, 
-            "options_heading"
+            "timetable_title"
             ))
         )
 
@@ -121,10 +123,12 @@ def lookForChanges(baseTimetableHtml: str, driver) -> Tuple[bool, list[str]]:
 
         # Parse the page for the current dates at which the timetable displays for.
         timetableSubheading = driver.find_element(By.CLASS_NAME, "sitsjqtttitle")          
-   
+  
+        print("[LOGS] Calculating the current day of year...")
         # Webscrape every other timtable until the end of term
         currentDayofYear = calculateCurrentDayOfYear(timetableSubheading.text) 
-
+        
+        print("[LOGS] Looking for outstanding timtables...")
         # Check which term you are in. Then look for any changes to the timetable.
         found, newData = lookForDifference(driver, baseTimetableHtml, currentDayofYear, wait)
 
@@ -162,7 +166,8 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
     # Create an array to hold all the different timetables
     newData = []
     
-    print("[LOGS] Proceeding to find outstanding differences..")
+    print("[LOGS] Printing the base timetable function in the look for difference timtable")
+    print(str(baseTimetableHtml))
 
     while currentDay < borderDay:
         # wait until the timetable has loaded onto the page
@@ -182,7 +187,8 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
             res = [html, currentDay]
             newData.append(res)
 
-            print("[LOGS] Appending different HTML data!")
+            print("[LOGS] Appending different HTML data! Current day" + str(currentDay))
+            takeScreenshot(driver)
 
         # Use another explicit wait to make sure that the timetable is loaded, before moving onto the next timetable.
         nextButton = wait.until(
@@ -192,6 +198,7 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
             ))
         )
         
+        takeScreenshot(driver)
         # Move onto the next timetable
         nextButton = driver.find_element(By.ID, "timetable_next")
         nextButton.click()
@@ -248,14 +255,8 @@ into the boundaries of the first term.
 def rewindTimetable(driver, currentDay, wait):
     count = 0;
     while count < 7:
-        wait.until(
-            EC.element_to_be_clickable((
-                By.ID,
-                "timetable_prev"
-            ))
-        )
 
-        print("[LOGS] Rewinding the days of the year! Current day" + str(currentDay))
+        print("[LOGS] Rewinding the days of the year! Current day: " + str(currentDay))
 
         wait.until(
             EC.invisibility_of_element_located((
@@ -263,7 +264,9 @@ def rewindTimetable(driver, currentDay, wait):
                 "ui-widget-overlay ui-front"
             ))
         )
-            
+        
+        driver.implicitly_wait(2)
+
         previousWeekButton = driver.find_element(By.ID, "timetable_prev") 
         previousWeekButton.click()
 
@@ -279,3 +282,7 @@ def rewindTimetable(driver, currentDay, wait):
 
         # increment count
         count += 1;
+
+    print("[LOGS] Rewind over!")
+
+    return driver
