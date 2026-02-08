@@ -1,7 +1,33 @@
-function LoginPage() {
+export default function LoginPage() {
     return (
-        <h1>KentNotifer Login Page</h1>
+        <div>
+            <h1>KentNotifer Login Page</h1>
+            <LoginCard />
+        </div>
     );
 } 
 
-export default LoginPage
+function LoginCard() {
+    return (
+        <div>
+            <SignUpButton />
+            <SignInButton />
+        </div>
+    );
+}
+
+function SignUpButton() {
+    return (
+        <button>
+            Sign Up
+        </button>
+    );
+}
+
+function SignInButton() {
+    return (
+        <button>
+            Sign In
+        </button>
+    );
+}
