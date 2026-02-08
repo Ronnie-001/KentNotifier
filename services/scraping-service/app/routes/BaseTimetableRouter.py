@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.schema.userDetailsSchema import LoginDetailsModel
 from app.models.table import data
-from app.services.scrapingService import findBaseTimetable, loginToKentVision, navigateToTimetable
+from app.routes.scrapingRouter import rewindTimetable
+from app.services.scrapingService import findBaseTimetable, getCurrentDayOfYear, loginToKentVision, navigateToTimetable
 from app.services.userDetailsService import getIdFromJwt
 from app.dependencies import getDb
 
@@ -47,6 +48,12 @@ async def getBaseTimetable(details: LoginDetailsModel,
 
     # Nagivate to the timetable once logged in.
     driver = navigateToTimetable(driver, wait)
+   
+    # Grab the current day for rewinding the timetable
+    currentDay = getCurrentDayOfYear(driver, wait)
+
+    # TO BE REMOVED: rewind the timetable
+    driver = rewindTimetable(driver, currentDay, wait)
 
     # Find the base timetable data
     baseTimetableHtml = findBaseTimetable(driver, wait)

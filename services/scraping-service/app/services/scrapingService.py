@@ -16,6 +16,7 @@ def getChromeDriver() -> WebDriver:
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("----disable-dev-shm-usage")
     
     driver = webdriver.Chrome(options=chrome_options)
 
@@ -283,7 +284,6 @@ Function will return the HTML for the base timetable.
 """
 def findBaseTimetable(driver, wait) -> str:
     try:
-
         currentDayofYear = getCurrentDayOfYear(driver, wait)
 
         print("[LOGS] Current days into the year: " + str(currentDayofYear))
@@ -312,7 +312,6 @@ def findBaseTimetable(driver, wait) -> str:
         takeScreenshot(driver)
 
     return "NO TIMETABLE DATA"
-
 
 """
 Function used to get the current day of the year on the 
@@ -377,6 +376,8 @@ def findBaseTimetableDate(currentDay, borderDay, driver, wait):
             print("[LOGS] Base timetable found!")
             break
         else:
+            print("[LOGS] Currently looking at a timetable!")
+
             wait.until(
                 EC.element_to_be_clickable((
                     By.ID,
@@ -384,7 +385,7 @@ def findBaseTimetableDate(currentDay, borderDay, driver, wait):
                 ))
             )
 
-            print("[LOGS] Currently looking at a timetable!")
+            previousWeekButton = driver.find_element(By.ID, "timetable_prev") 
 
             wait.until(
                 EC.invisibility_of_element_located((
@@ -393,7 +394,15 @@ def findBaseTimetableDate(currentDay, borderDay, driver, wait):
                 ))
             )
         
-            previousWeekButton = driver.find_element(By.ID, "timetable_prev") 
+            driver.implicitly_wait(5)
+
+            wait.until(
+                EC.element_to_be_clickable((
+                    By.ID,
+                    "timetable_prev"
+                ))
+            )
+
             previousWeekButton.click()
 
             currentDay = getCurrentDayOfYear(driver, wait)

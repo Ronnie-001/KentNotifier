@@ -63,8 +63,6 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
         # Grab the current day for rewinding the timetable
         currentDay = getCurrentDayOfYear(driver, wait)
 
-        driver = rewindTimetable(driver, currentDay, wait)
-
         # Scan through KV, look for changes in the timetable.
         found, newData = lookForChanges(str(baseTimetableHtml), driver) 
 
@@ -82,27 +80,68 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
                 # Create new soup for each entry and grab the timetable data
                 soup = BeautifulSoup(str(data), "html.parser") 
                 newTimetable_info = collectTimetableData(soup)
-                
+
+                # Check if any new timetable data was found
+                if not newTimetable_info:
+                    # skip if nothing was found
+                    continue
+               
+                # Clean the data before comparison
+                base_cleaned = []
+                for row in baseTimetable_info:
+                    cleaned_row = tuple(item for item in row)
+                    base_cleaned.append(cleaned_row)
+
+                newInfo_cleaned = []
+                for row in newTimetable_info:
+                    cleaned_row = tuple(item for item in row)
+                    newInfo_cleaned.append(cleaned_row)
+
                 # Compare the base timetable with the data collected data.
-                baseTimetableSet = set(tuple(x) for x in baseTimetable_info)
-                newDataSet = set(tuple(x) for x in newTimetable_info)
+                baseTimetableSet = set(base_cleaned)
+                newDataSet = set(newInfo_cleaned)
                 
                 # Find the differences between the 2 sets
                 added = newDataSet - baseTimetableSet
                 removed = baseTimetableSet - newDataSet
 
-                # TODO: Append the changed result to the res_dict
                 print("----------------[LOGS] ADDED--------------------------")
                 print(added)
 
                 print("----------------[LOGS] REMOVED--------------------------")
                 print(removed)
+
+                # TODO: Append the changed result to the res_dict
         else:
             print("[LOGS] NO new events found!")
             
             return {"base_timetable_data" : "NONE_FOUND"} 
         
         return res_dict 
+
+
+def normalize_timetable_data(data_list):
+    """
+    1. Splits text to remove \n \t and extra spaces.
+    2. Rejects any strings that become empty.
+    3. Returns a set of clean tuples.
+    """
+    cleaned_set = set()
+    
+    for row in data_list:
+        # Step 1 & 2: Clean text and filter out empty strings
+        clean_row = []
+        for item in row:
+            # " ".join(item.split()) removes all \n, \t and multiple spaces
+            text = " ".join(str(item).split())
+            if text:  # ONLY add if text is not empty
+                clean_row.append(text)
+        
+        # Step 3: Convert to tuple and add to set
+        if clean_row:
+            cleaned_set.add(tuple(clean_row))
+            
+    return cleaned_set
 
 """
 Function created to look for changes in the user's timetable.
@@ -184,8 +223,7 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
         if (data != baseTimetableHtml):
             # Extract the current timetable, add the data into the list
             html = extractTimetable(driver)            
-            res = [html, currentDay]
-            newData.append(res)
+            newData.append(html)
 
             print("[LOGS] Appending different HTML data! Current day" + str(currentDay))
             takeScreenshot(driver)
@@ -199,6 +237,14 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
         )
         
         takeScreenshot(driver)
+
+        wait.until(
+            EC.invisibility_of_element_located((
+                By.CLASS_NAME,
+                "ui-widget-overlay ui-front"
+            ))
+        )
+
         # Move onto the next timetable
         nextButton = driver.find_element(By.ID, "timetable_next")
         nextButton.click()
@@ -221,13 +267,12 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
 
 
 # TODO: Implement function to collect the information from each lecture/class into an array.
-def collectTimetableData(soup):
+def collectTimetableData(soup) -> list[str]:
     # Filter the HTML based on the classes applied to each lecture/class
     # Only select the HTML that applies these specific classes
     timetable_list = soup.find('ul', class_='sitsjqttitems').select('.sv-panel.sv-panel-default.sitsjqttitem.sitsjqttevent.sitsjqtteventhover.sv-tooltip-filter')
     
     data = []
-    
     for activity in timetable_list:
         content = activity.select_one(".sv-row .sv-col-xs-12 div")
         event_data = list(content.stripped_strings)
@@ -235,18 +280,15 @@ def collectTimetableData(soup):
         # TODO: Add check to see if the event data is empty.
         data.append(event_data)
     
-    # GO through the data that was collected and clean the data.
-    for activity in data:
-        for info in activity:
-            # Remove the redundant characters from the data.
-            if info.startswith(", "):
-                info = info[2:]                
-            
-            # Remove redundant commas from the data.
-            if info == ",":
-                activity.remove(info)
-
     return data
+
+
+def cleanData(text: str) -> str:
+    print("[LOGS] Cleaning data!")
+    if not text:
+        return ""
+
+    return text.replace("\n", "")
 
 """
 Function purely for testing; used for putting the date back 
@@ -254,8 +296,7 @@ into the boundaries of the first term.
 """
 def rewindTimetable(driver, currentDay, wait):
     count = 0;
-    while count < 7:
-
+    while count < 8:
         print("[LOGS] Rewinding the days of the year! Current day: " + str(currentDay))
 
         wait.until(
@@ -265,7 +306,12 @@ def rewindTimetable(driver, currentDay, wait):
             ))
         )
         
-        driver.implicitly_wait(2)
+        wait.until(
+            EC.element_to_be_clickable((
+                By.ID,
+                "timetable_prev"
+            ))
+        )
 
         previousWeekButton = driver.find_element(By.ID, "timetable_prev") 
         previousWeekButton.click()

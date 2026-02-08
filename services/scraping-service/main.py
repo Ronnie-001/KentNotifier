@@ -4,6 +4,10 @@ from contextlib import asynccontextmanager
 from app.routes import BaseTimetableRouter, scrapingRouter
 from app.database.dbconn import Base, engine
 
+async def CreateDbTables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
 # Mainly used for testing purposes
 async def DropAndCreateDbTables():
     async with engine.begin() as conn:
@@ -13,7 +17,7 @@ async def DropAndCreateDbTables():
 # Bind all the tables to the engine so that the tables will be created.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create and drop the database
+    #await CreateDbTables()
     # await DropAndCreateDbTables()
      
     # everything after 'yeild' is what happens when the application shuts down
