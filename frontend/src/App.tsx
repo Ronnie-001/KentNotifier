@@ -8,7 +8,6 @@ export default function App() {
             {/* The registration routes*/}
             <Route path="/" element={ <SignIn /> } />
             <Route path="/register" element={ <Register /> } />
-            
 
         </Routes>
     )
