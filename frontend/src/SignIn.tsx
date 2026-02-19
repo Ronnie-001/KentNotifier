@@ -2,10 +2,48 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Link, useNavigate } from "react-router-dom" 
+import { useState } from "react"
 import logo from "@/assets/logo.jpg" 
-import { Link } from "react-router-dom" 
 
 export default function SignIn() {
+
+    // Login Hooks
+    const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
+    const navigate = useNavigate();
+    
+    async function handleLogin() {
+        try {
+            const response = await fetch("http://localhost:8080/login-service/auth/v1/signin", {
+               method: "POST",
+               body: JSON.stringify({email: email, password: password}),
+               headers: {
+                   "Content-Type": "application/json"
+               },
+            });
+            
+            // Postman being used for testing; Check for 401 errors
+            if (!response.ok) {
+                console.log("Error trying to login: " + response.status);
+                alert("Invalid credentials!");
+                return;
+            }
+
+            const data = await response.json();
+            console.log("Server response: ", data);
+
+            // Navigate and go to the home page
+            navigate("/home")
+            
+            localStorage.setItem("token", data.token);
+           
+        } catch (error) {
+            alert("Could not connect to the server")            
+            console.log(error)
+        }
+    }
+
   return (
     <div className="relative flex justify-center items-center h-screen bg-gray-50">
       
@@ -26,9 +64,11 @@ export default function SignIn() {
           {/* Username */}
           <div className="space-y-2">
             <Label htmlFor="username">Email Address</Label>
-            <Input id="username" placeholder="user@kent.ac.uk" />
+            <Input id="username" 
+                   placeholder="user@kent.ac.uk" 
+                   onChange={(e) => setEmail(e.target.value)}/>
           </div>
-
+            
           {/* Password Section */}
           <div className="space-y-2">
             <div className="flex justify-between items-center">
@@ -37,12 +77,14 @@ export default function SignIn() {
                 Forgot password?
               </a>
             </div>
-            <Input id="password" type="password" />
+            <Input id="password"
+                   type="password"
+                   onChange={(e) => setPassword(e.target.value)}/>
           </div>
 
           {/* Buttons */}
           <div className="pt-2 flex flex-col gap-3">
-            <Button className="w-full bg-blue-900 hover:bg-blue-800">
+            <Button onClick={handleLogin} className="w-full bg-blue-900 hover:bg-blue-800">
               Sign In
             </Button>
             
@@ -64,5 +106,3 @@ export default function SignIn() {
     </div>
   )
 }
-
-

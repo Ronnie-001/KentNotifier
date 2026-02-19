@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom"
 import SignIn from "./SignIn"
 import Register from "./Register"
+import Home from "./Home"
 
 export default function App() {
     return (
@@ -10,9 +11,8 @@ export default function App() {
             <Route path="/register" element={ <Register /> } />
 
             {/* Main pages of the website*/}
-            <Route path="/home" element={ <Register /> } />
+            <Route path="/home" element={ <Home /> } />
             <Route path="/results" element={ <Register /> } />
-
         </Routes>
     )
 }
