@@ -2,8 +2,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import logo from "@/assets/logo.jpg" 
 import { Link } from "react-router-dom" 
+import Icon from "@/components/ui/icon"
 
 export default function Register() {
   return (
@@ -11,8 +11,7 @@ export default function Register() {
       
       {/* 1. Logo in Top-Left Corner (Matches Sign In) */}
       <div className="absolute top-6 left-6 flex items-center gap-2">
-        <img src={logo} alt="Kent Notifier Logo" className="w-10 h-auto" />
-        <span className="font-bold text-xl text-blue-900">KentNotifier</span>
+            <Icon />
       </div>
 
       {/* 2. Registration Card */}
