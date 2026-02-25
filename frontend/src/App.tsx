@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom"
 import SignIn from "./SignIn"
 import Register from "./Register"
 import Sync from "./Sync"
+import Mfa from "./Mfa"
 
 export default function App() {
     return (
@@ -13,6 +14,8 @@ export default function App() {
             {/* Main pages of the website*/}
             <Route path="/sync" element={ <Sync /> } />
             <Route path="/results" element={ <Register /> } />
+            <Route path="/mfa" element={ <Mfa /> } />
+
         </Routes>
     )
 }

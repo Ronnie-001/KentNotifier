@@ -48,7 +48,6 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
         result = await db.execute(stmt)
         baseTimetableHtml = result.scalar()
         
-        # Parse the base timetable data to get the 
         soup = BeautifulSoup(str(baseTimetableHtml), "html.parser") 
         baseTimetable_info = collectTimetableData(soup)
         
@@ -57,18 +56,13 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
         # Add explicit waits so next webpage can load properly
         wait = WebDriverWait(driver, timeout=50)
         
-        # Navigate to the timetable once logged into kentvision
         driver = navigateToTimetable(driver, wait)
-
-        # Grab the current day for rewinding the timetable
         currentDay = getCurrentDayOfYear(driver, wait)
 
-        # Scan through KV, look for changes in the timetable.
         found, newData = lookForChanges(str(baseTimetableHtml), driver) 
 
         res_dict = {}
 
-        # Check if a new timteable has been found.
         if found:
             """
             Use beautiful soup to parse the newData and the base timetable html.
@@ -111,14 +105,21 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
                 print("----------------[LOGS] REMOVED--------------------------")
                 print(removed)
 
-                # TODO: Append the changed result to the res_dict
+                # Append the found changes.
+                res_dict["status"] = "UPDATED"
+                res_dict["added"] = [list(item) for item in added]
+                res_dict["removed"] = [list(item) for item in removed]
+
         else:
             print("[LOGS] NO new events found!")
             
-            return {"base_timetable_data" : "NONE_FOUND"} 
+            return {
+                "status": "NO CHANGE",
+                "added": [],
+                "removed": []
+            }
         
         return res_dict 
-
 
 def normalize_timetable_data(data_list):
     """
@@ -129,15 +130,12 @@ def normalize_timetable_data(data_list):
     cleaned_set = set()
     
     for row in data_list:
-        # Step 1 & 2: Clean text and filter out empty strings
         clean_row = []
         for item in row:
-            # " ".join(item.split()) removes all \n, \t and multiple spaces
             text = " ".join(str(item).split())
             if text:  # ONLY add if text is not empty
                 clean_row.append(text)
         
-        # Step 3: Convert to tuple and add to set
         if clean_row:
             cleaned_set.add(tuple(clean_row))
             

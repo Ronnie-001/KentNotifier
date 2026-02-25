@@ -46,19 +46,15 @@ async def getBaseTimetable(details: LoginDetailsModel,
     # Add explicit waits so next webpage can load properly
     wait = WebDriverWait(driver, timeout=120)
 
-    # Nagivate to the timetable once logged in.
     driver = navigateToTimetable(driver, wait)
    
-    # Grab the current day for rewinding the timetable
     currentDay = getCurrentDayOfYear(driver, wait)
 
     # TO BE REMOVED: rewind the timetable
-    driver = rewindTimetable(driver, currentDay, wait)
+    # driver = rewindTimetable(driver, currentDay, wait)
 
-    # Find the base timetable data
     baseTimetableHtml = findBaseTimetable(driver, wait)
 
-    # Close the chromium driver instance.
     driver.quit()
 
     print("[LOGS] Closed out of the selenium driver!")

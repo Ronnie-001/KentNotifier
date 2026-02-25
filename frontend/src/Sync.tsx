@@ -4,38 +4,30 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { LogOut, Lock, ShieldCheck, Loader2 } from "lucide-react"
-import Icon from "@/components/ui/icon" // Assuming this is your logo component
+import Icon from "@/components/ui/icon" 
+import { useNavigate } from "react-router-dom"
+import Navbar from "./components/ui/navbar"
 
-export default function Sync() {
+export default function Home() {
     const [loading, setLoading] = useState(false)
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
+    const navigate = useNavigate()
 
     const handleScrape = async () => {
         setLoading(true)
         // Simulate a scraping delay (replace this with your real API call later)
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        await new Promise(resolve => setTimeout(resolve, 3000))
         console.log("Scraping started for:", email)
         setLoading(false)
+
+        // Navigate to the page where the MFA code will be displayed
+        navigate("/mfa")
     }
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans">
-
-            {/* 1. Navbar */}
-            <nav className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 p-4 flex justify-between items-center px-6 md:px-10">
-                <Icon />
-                <div className="flex items-center gap-5">
-                    <span className="text-sm font-medium text-slate-600 hidden sm:inline">
-                        user@kent.ac.uk
-                    </span>
-                    <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900 hover:bg-slate-100">
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Log Out
-                    </Button>
-                </div>
-            </nav>
-
+            <Navbar />
             {/* 2. Main Content Area */}
             <div className="flex flex-col items-center justify-center mt-12 px-4">
 
