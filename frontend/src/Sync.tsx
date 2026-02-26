@@ -13,16 +13,25 @@ export default function Home() {
     const [password, setPassword] = useState("")
     const navigate = useNavigate()
 
+    // Grab the token
+    const token = localStorage.getItem("token")
+
+    if (!token) {
+        console.error("No token found")
+        return 
+    }
+
     const handleScrape = async () => {
         setLoading(true)
         await new Promise(resolve => setTimeout(resolve, 3000))
         console.log("Scraping started for:", email)
         
-        const response = await fetch("http//localhost:8080/scraping-service/v1/get-login-details", {
-            method: "POST",
+        const response = await fetch("http://localhost:8080/scraping-service/v1/get-login-details", {
+            method: "GET",
             body: JSON.stringify({ email: email, password: password }),
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
             }
         })
         
