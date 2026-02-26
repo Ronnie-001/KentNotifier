@@ -63,6 +63,7 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
 
         res_dict = {}
 
+        # Check if a new timteable has been found.
         if found:
             """
             Use beautiful soup to parse the newData and the base timetable html.

@@ -19,20 +19,20 @@ export default function SignIn() {
                 body: JSON.stringify({ email: email, password: password }),
                 headers: {
                     "Content-Type": "application/json"
-                },
+                }
             });
 
             // Postman being used for testing; Check for 401 errors
             if (!response.ok) {
-                console.log("Error trying to login: " + response.status);
-                alert("Invalid credentials!");
-                return;
+                console.log("Error trying to login: " + response.status)
+                alert("Invalid credentials!")
+                return
             }
 
-            const data = await response.json();
-            console.log("Server response: ", data);
+            const data = await response.json()
+            console.log("Server response: ", data)
 
-            localStorage.setItem("token", data.token);
+            localStorage.setItem("token", data.token)
             navigate("/sync")
 
         } catch (error) {

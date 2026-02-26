@@ -3,8 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { LogOut, Lock, ShieldCheck, Loader2 } from "lucide-react"
-import Icon from "@/components/ui/icon" 
+import { Lock, ShieldCheck, Loader2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import Navbar from "./components/ui/navbar"
 
@@ -16,10 +15,29 @@ export default function Home() {
 
     const handleScrape = async () => {
         setLoading(true)
-        // Simulate a scraping delay (replace this with your real API call later)
         await new Promise(resolve => setTimeout(resolve, 3000))
         console.log("Scraping started for:", email)
+        
+        const response = await fetch("http//localhost:8080/scraping-service/v1/get-login-details", {
+            method: "POST",
+            body: JSON.stringify({ email: email, password: password }),
+            headers: {
+                "Content-Type": "application/json"
+            }
+        })
+        
+        if (!response.ok) {
+            console.log("Error trying to get the base timetable: " + response.status)
+            alert("An error occured!")
+            return
+        }
+
+        const data = await response.json()
+        console.log("Data returned from getting the base timetable" + data)
+
         setLoading(false)
+
+        await new Promise(resolve => setTimeout(resolve, 3000))
 
         // Navigate to the page where the MFA code will be displayed
         navigate("/mfa")

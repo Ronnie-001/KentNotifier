@@ -48,9 +48,8 @@ async def getBaseTimetable(details: LoginDetailsModel,
 
     driver = navigateToTimetable(driver, wait)
    
-    currentDay = getCurrentDayOfYear(driver, wait)
-
     # TO BE REMOVED: rewind the timetable
+    # currentDay = getCurrentDayOfYear(driver, wait)
     # driver = rewindTimetable(driver, currentDay, wait)
 
     baseTimetableHtml = findBaseTimetable(driver, wait)
