@@ -8,8 +8,8 @@ import Icon from "@/components/ui/icon"
 
 export default function SignIn() {
     // Login Hooks
-    const [email, setEmail] = useState("")
-    const [password, setPassword] = useState("")
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const navigate = useNavigate();
 
     async function handleLogin() {
@@ -22,22 +22,21 @@ export default function SignIn() {
                 }
             });
 
-            // Postman being used for testing; Check for 401 errors
             if (!response.ok) {
-                console.log("Error trying to login: " + response.status)
-                alert("Invalid credentials!")
-                return
+                console.log("Error trying to login: " + response.status);
+                alert("Invalid credentials!");
+                return;
             }
 
-            const data = await response.json()
-            console.log("Server response: ", data)
+            const data = await response.json();
+            console.log("Server response: ", data);
 
-            localStorage.setItem("token", data.token)
-            navigate("/sync")
+            localStorage.setItem("token", data.token);
+            navigate("/sync");
 
         } catch (error) {
-            alert("Could not connect to the server")
-            console.log(error)
+            alert("Could not connect to the server");
+            console.log(error);
         }
     }
 
@@ -60,7 +59,8 @@ export default function SignIn() {
                     {/* Username */}
                     <div className="space-y-2">
                         <Label htmlFor="username">Email Address</Label>
-                        <Input id="username"
+                        <Input 
+                            id="username"
                             placeholder="user@kent.ac.uk"
                             onChange={(e) => setEmail(e.target.value)} />
                     </div>

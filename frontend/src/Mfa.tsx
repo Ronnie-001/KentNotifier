@@ -6,42 +6,42 @@ import { useNavigate } from "react-router-dom"
 import Navbar from "@/components/ui/navbar"
 
 export default function Mfa() {
-    const [status, setStatus] = useState("scraping") 
-    const [mfaCode, setMfaCode] = useState("")
-    const [copied, setCopied] = useState(false)
-    const navigate = useNavigate()
+    const [status, setStatus] = useState("scraping");
+    const [mfaCode, setMfaCode] = useState("");
+    const [copied, setCopied] = useState(false);
+    const navigate = useNavigate();
     
     useEffect(() => {        
         const pollForMfa = async () => {
             try {
-                const response = await fetch("http//localhost:8080/scraping-service/v1/login-status/{userID}")
+                const response = await fetch("http//localhost:8080/scraping-service/v1/login-status/{userID}");
 
                 if (response.ok) {
-                    const data = await response.json()
+                    const data = await response.json();
 
                     if (data.status == "MFA_WAITING") {
-                        setMfaCode(data.mfaAuthNumber)
-                        setStatus("success")
+                        setMfaCode(data.mfaAuthNumber);
+                        setStatus("success");
                     }
 
                 }
 
             } catch (error) {
-                console.log("Error when polling for the MFA code!")
-                alert("Polling error")
+                console.log("Error when polling for the MFA code!");
+                alert("Polling error");
             }
         }
 
-        const intervalId = setInterval(pollForMfa, 3000)
+        const intervalId = setInterval(pollForMfa, 3000);
         
-        return () => clearInterval(intervalId)
+        return () => clearInterval(intervalId);
 
     }, [])
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(mfaCode.replace(/\s/g, '')) // Remove spaces for copy
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
+        navigator.clipboard.writeText(mfaCode.replace(/\s/g, '')); // Remove spaces for copy
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     }
 
     return (

@@ -1,11 +1,52 @@
+import { useState } from "react" 
+import { Link, useNavigate } from "react-router-dom" 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Link } from "react-router-dom"
 import Icon from "@/components/ui/icon"
 
 export default function Register() {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [passwordConfirm, setPasswordConfirm] = useState("");
+    const navigate = useNavigate(); 
+
+    async function handleSignUp() {
+        try {
+            // Check if the 2 passwords were equal or not
+            if (password != passwordConfirm) {
+                console.log("The password entered in both feilds does not match!");
+                alert("Invalid credentials!");
+                return;
+            }
+
+            const response = await fetch("http://localhost:8080/login-service/auth/v1/signup", {
+                method: "POST",
+                body: JSON.stringify({ email: email, password: password }),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            if (!response.ok) {
+                console.log("Error when trying to register a new user" + response.status);
+                alert("Invalid credentials!");
+                return;
+            }
+
+            const data = await response.json();
+            console.log("Server response: ", data);
+
+            localStorage.setItem("token", data.token);
+            navigate("/sync");
+
+        } catch (error) {
+            alert("Could not connect to the server");
+            console.log(error);
+        }
+    }
+
     return (
         <div className="relative flex justify-center items-center h-screen bg-gray-50">
 
@@ -32,25 +73,38 @@ export default function Register() {
                     {/* Email */}
                     <div className="space-y-2">
                         <Label htmlFor="email">Email Address</Label>
-                        <Input id="email" type="email" placeholder="user@kent.ac.uk" />
+                        <Input 
+                            id="email" 
+                            type="email" 
+                            placeholder="user@kent.ac.uk"
+                            onChange={(e) => setEmail(e.target.value)}
+                            />
                     </div>
 
                     {/* Password */}
                     <div className="space-y-2">
                         <Label htmlFor="password">Password</Label>
-                        <Input id="password" type="password" />
+                        <Input 
+                            id="password" 
+                            type="password"
+                            placeholder="set your password"
+                            onChange={(e) => setPassword(e.target.value)} />
                     </div>
 
                     {/* Confirm Password */}
                     <div className="space-y-2">
                         <Label htmlFor="confirm-password">Confirm Password</Label>
-                        <Input id="confirm-password" type="password" />
+                        <Input 
+                            id="confirm-password" 
+                            type="password"
+                            placeholder="confirm your password"
+                            onChange={(e) => setPasswordConfirm(e.target.value)} />
                     </div>
 
                     {/* Buttons */}
                     <div className="pt-2 flex flex-col gap-3">
                         {/* Primary Action: Create Account */}
-                        <Button className="w-full bg-blue-900 hover:bg-blue-800">
+                        <Button onClick={handleSignUp} className="w-full bg-blue-900 hover:bg-blue-800">
                             Create Account
                         </Button>
 
