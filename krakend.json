@@ -28,7 +28,7 @@
         {
             "endpoint": "/scraping-service/v1/get-login-details",
             "timeout": "180s",
-            "method": "GET",
+            "method": "POST",
             "input_headers": [
                 "Authorization"
             ],
@@ -45,7 +45,7 @@
             "backend": [
                 {
                     "url_pattern": "/scraping-service/v1/get-login-details",
-                    "method": "GET",
+                    "method": "POST",
                     "host": ["http://scraping-service:8001"]
                 }
             ]

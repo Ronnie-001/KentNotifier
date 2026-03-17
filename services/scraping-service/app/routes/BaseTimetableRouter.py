@@ -19,7 +19,7 @@ Send a POST request to grab the users login, so that their specific
 timetable can be webscraped from KentVision.
 """
 
-@detailsRouter.get("/scraping-service/v1/get-login-details")
+@detailsRouter.post("/scraping-service/v1/get-login-details")
 async def getBaseTimetable(details: LoginDetailsModel, 
                            Authorization: Annotated[str | None, Header()] = None,
                            db: AsyncSession = Depends(getDb)):

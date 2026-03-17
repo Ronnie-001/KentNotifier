@@ -8,7 +8,6 @@
 
   outputs = { self, nixpkgs }:
     let
-      # Change this to "aarch64-linux" if you are on an ARM machine
       system = "x86_64-linux"; 
       pkgs = nixpkgs.legacyPackages.${system};
 

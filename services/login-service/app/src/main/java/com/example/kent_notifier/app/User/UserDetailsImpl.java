@@ -12,7 +12,7 @@ import java.util.Collection;
 import java.util.Set;
 
 public class UserDetailsImpl implements UserDetails {
-    
+
     // Define role prefix for user authorities
     private final String ROLE_PREFIX = "ROLE_";
     

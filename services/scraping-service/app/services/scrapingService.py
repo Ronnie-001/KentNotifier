@@ -117,7 +117,7 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
 
         # Set the current state of the user to 'logging in'
         redis.hset(f"user:{user_id}:state", mapping={
-                        "status":"MFA_WAITING",
+                        "status":"LOGGED_IN",
                         "mfa_code": "NULL",
                    })
 

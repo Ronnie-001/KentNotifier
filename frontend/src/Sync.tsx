@@ -8,13 +8,13 @@ import { useNavigate } from "react-router-dom"
 import Navbar from "./components/ui/navbar"
 
 export default function Home() {
-    const [loading, setLoading] = useState(false)
-    const [email, setEmail] = useState("")
-    const [password, setPassword] = useState("")
-    const navigate = useNavigate()
+    const [loading, setLoading] = useState(false);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const navigate = useNavigate();
 
     // Grab the token
-    const token = localStorage.getItem("token")
+    const token = localStorage.getItem("token");
 
     if (!token) {
         console.error("No token found")
@@ -22,34 +22,34 @@ export default function Home() {
     }
 
     const handleScrape = async () => {
-        setLoading(true)
-        await new Promise(resolve => setTimeout(resolve, 3000))
-        console.log("Scraping started for:", email)
+        setLoading(true);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        console.log("Scraping started for:", email);
         
         const response = await fetch("http://localhost:8080/scraping-service/v1/get-login-details", {
-            method: "GET",
+            method: "POST",
             body: JSON.stringify({ email: email, password: password }),
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${token}`
             }
-        })
+        });
         
         if (!response.ok) {
-            console.log("Error trying to get the base timetable: " + response.status)
-            alert("An error occured!")
-            return
+            console.log("Error trying to get the base timetable: " + response.status);
+            alert("An error occured!");
+            return;
         }
 
-        const data = await response.json()
-        console.log("Data returned from getting the base timetable" + data)
+        const data = await response.json();
+        console.log("Data returned from getting the base timetable" + data);
 
-        setLoading(false)
+        setLoading(false);
 
-        await new Promise(resolve => setTimeout(resolve, 3000))
+        await new Promise(resolve => setTimeout(resolve, 3000));
 
         // Navigate to the page where the MFA code will be displayed
-        navigate("/mfa")
+        navigate("/mfa");
     }
 
     return (

@@ -10,7 +10,7 @@ export default function Mfa() {
     const [mfaCode, setMfaCode] = useState("");
     const [copied, setCopied] = useState(false);
     const navigate = useNavigate();
-    
+
     useEffect(() => {        
         const pollForMfa = async () => {
             try {
@@ -23,7 +23,6 @@ export default function Mfa() {
                         setMfaCode(data.mfaAuthNumber);
                         setStatus("success");
                     }
-
                 }
 
             } catch (error) {
@@ -31,7 +30,7 @@ export default function Mfa() {
                 alert("Polling error");
             }
         }
-
+        
         const intervalId = setInterval(pollForMfa, 3000);
         
         return () => clearInterval(intervalId);
