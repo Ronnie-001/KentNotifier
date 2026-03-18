@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Loader2, Copy, Check, KeyRound } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import Navbar from "@/components/ui/navbar"
+import { jwtDecode } from "jwt-decode"
 
 export default function Mfa() {
     const [status, setStatus] = useState("scraping");
@@ -11,12 +12,28 @@ export default function Mfa() {
     const [copied, setCopied] = useState(false);
     const navigate = useNavigate();
 
+    // Define an interface to define our own custom JWT payload
+    interface customJwtPayload  {
+        sub?: string;
+        ID?: number;
+        aud?: string[] | string;
+        iat?: number;
+        exp?: number;
+    }
+
+    // Grab the user id from the JWT token
+    const token = localStorage.getItem("token");
+    const decoded = token != null ? jwtDecode<customJwtPayload>(token) : null;
+
     useEffect(() => {        
         const pollForMfa = async () => {
             try {
-                const response = await fetch("http//localhost:8080/scraping-service/v1/login-status/{userID}");
+                const response = await fetch(`http//localhost:8080/scraping-service/v1/login-status/${decoded?.ID}`);
 
                 if (response.ok) {
+                    console.log("mfa: getting the response")
+                
+                    // TODO: Fix.
                     const data = await response.json();
 
                     if (data.status == "SUCCESS") {
@@ -30,8 +47,9 @@ export default function Mfa() {
                 }
 
             } catch (error) {
-                console.log("Error when polling for the MFA code!");
+                console.log("Error when polling for the MFA code!: " + error);
                 alert("Polling error");
+                return;
             }
         }
         
@@ -49,9 +67,7 @@ export default function Mfa() {
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
-            
             <Navbar />
-
             <div className="flex-1 flex justify-center items-center p-4">
                 <Card className="w-full max-w-sm shadow-xl border-t-4 border-t-blue-600">
                     

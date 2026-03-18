@@ -322,12 +322,12 @@ def getCurrentDayOfYear(driver, wait):
     wait.until(
         EC.visibility_of_element_located((
             By.CLASS_NAME,
-            "sitsjqtttitle"
+            "ttb_title"
         ))
     )
 
     # Parse the page for the current dates at which the timetable displays for.
-    timetableSubheading = driver.find_element(By.CLASS_NAME, "sitsjqtttitle")          
+    timetableSubheading = driver.find_element(By.CLASS_NAME, "ttb_title")          
     currentDayofYear = calculateCurrentDayOfYear(timetableSubheading.text)
 
     return currentDayofYear
@@ -345,7 +345,9 @@ def calculateCurrentDayOfYear(text: str) -> int:
     """
     map = {
         "January": 0,
-        "Febuary": 31,
+
+        # TODO: Change the name back to Febuary, they spelt the name of the month wrong
+        "February": 31,
         "March": 59,
         "April": 90,
         "May": 120,
@@ -359,9 +361,20 @@ def calculateCurrentDayOfYear(text: str) -> int:
     }
     
     arr = text.split(" ")
-    # Grab the day, month from the text
-    day = int(arr[0])
-    month = arr[3]
+
+    # Check the size of the array in case two months are included where 
+    # the date is.
+    
+    day = -1
+    month = ""
+
+    if len(arr) == 6:
+        day = int(arr[0])
+        month = str(arr[1])        
+    else:
+        # Grab the day, month from the text
+        day = int(arr[0])
+        month = str(arr[3])
 
     totalDays = day + map[month]
 
@@ -378,17 +391,17 @@ def findBaseTimetableDate(currentDay, borderDay, driver, wait):
 
             wait.until(
                 EC.element_to_be_clickable((
-                    By.ID,
-                    "timetable_prev"
+                    By.CLASS_NAME,
+                    "sv-btn sv-btn-default ttb_no_next_prev ttb_change_date_next"
                 ))
             )
 
-            previousWeekButton = driver.find_element(By.ID, "timetable_prev") 
+            previousWeekButton = driver.find_element(By.CLASS_NAME, "sv-btn sv-btn-default ttb_no_next_prev ttb_change_date_next") 
 
             wait.until(
                 EC.invisibility_of_element_located((
-                    By.CLASS_NAME,
-                    "ui-widget-overlay ui-front"
+                    By.ID,
+                    "ttb_loading_dialog"
                 ))
             )
         
@@ -396,8 +409,8 @@ def findBaseTimetableDate(currentDay, borderDay, driver, wait):
 
             wait.until(
                 EC.element_to_be_clickable((
-                    By.ID,
-                    "timetable_prev"
+                    By.CLASS_NAME,
+                    "sv-btn sv-btn-default ttb_no_next_prev ttb_change_date_next"
                 ))
             )
 

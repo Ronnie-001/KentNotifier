@@ -160,7 +160,7 @@ def lookForChanges(baseTimetableHtml: str, driver) -> Tuple[bool, list[str]]:
         print("[LOGS] Timetable found! Beginning Check...")    
 
         # Parse the page for the current dates at which the timetable displays for.
-        timetableSubheading = driver.find_element(By.CLASS_NAME, "sitsjqtttitle")          
+        timetableSubheading = driver.find_element(By.CLASS_NAME, "sitsjqtttitle")
   
         print("[LOGS] Calculating the current day of year...")
         # Webscrape every other timtable until the end of term
@@ -212,18 +212,16 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
         wait.until(
             EC.element_to_be_clickable((
                 By.ID,
-                "timetable_prev"
+                "sv-btn sv-btn-default ttb_no_next_prev ttb_change_date_next"
             ))
         )
+
         # Extract the HTML of the current timetable present and compare
         data = extractTimetable(driver) 
         
         # Check if it differs from the base timetable 
         if (data != baseTimetableHtml):
-            # Extract the current timetable, add the data into the list
-            html = extractTimetable(driver)            
-            newData.append(html)
-
+            newData.append(data)
             print("[LOGS] Appending different HTML data! Current day" + str(currentDay))
             takeScreenshot(driver)
 
@@ -231,7 +229,7 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
         nextButton = wait.until(
             EC.element_to_be_clickable(( 
                 By.ID,
-                "timetable_next"
+                "sv-btn sv-btn-default ttb_no_next_prev ttb_change_date_next"
             ))
         )
         
@@ -240,18 +238,18 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
         wait.until(
             EC.invisibility_of_element_located((
                 By.CLASS_NAME,
-                "ui-widget-overlay ui-front"
+                "ttb_loading_dialog"
             ))
         )
 
         # Move onto the next timetable
-        nextButton = driver.find_element(By.ID, "timetable_next")
+        nextButton = driver.find_element(By.ID, "sv-btn sv-btn-default ttb_no_next_prev ttb_change_date_next")
         nextButton.click()
 
         wait.until(
             EC.invisibility_of_element_located((
                 By.CLASS_NAME,
-                "ui-widget-overlay ui-front"
+                "ttb_loading_dialog"
             ))
         )
         # Function uses an explicit wait to grab the current day.
@@ -298,27 +296,26 @@ def rewindTimetable(driver, currentDay, wait):
     while count < 8:
         print("[LOGS] Rewinding the days of the year! Current day: " + str(currentDay))
 
-        wait.until(
-            EC.invisibility_of_element_located((
-                By.CLASS_NAME,
-                "ui-widget-overlay ui-front"
+        prev_week_button = wait.until(
+            EC.element_to_be_clickable((
+                By.CSS_SELECTOR, 
+                "button[data-ttb-action='CHANGE_DATE_PREV']"
             ))
         )
-        
+
+        prev_week_button.click()
+
+        wait.until(
+            EC.invisibility_of_element_located((
+                By.ID,
+                "ttb_loading_dialog"
+            ))
+        )
+
         wait.until(
             EC.element_to_be_clickable((
-                By.ID,
-                "timetable_prev"
-            ))
-        )
-
-        previousWeekButton = driver.find_element(By.ID, "timetable_prev") 
-        previousWeekButton.click()
-
-        wait.until(
-            EC.invisibility_of_element_located((
                 By.CLASS_NAME,
-                "ui-widget-overlay ui-front"
+                "ttb_change_date_next"
             ))
         )
 

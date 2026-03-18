@@ -44,6 +44,7 @@
 
           docker
           docker-compose
+          redis
         ] ++ mJava;
 
         # This runs every time you enter the shell
