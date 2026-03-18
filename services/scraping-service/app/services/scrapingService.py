@@ -117,7 +117,7 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
 
         # Set the current state of the user to 'logging in'
         redis.hset(f"user:{user_id}:state", mapping={
-                        "status":"LOGGED_IN",
+                        "status":"SUCCESS",
                         "mfa_code": "NULL",
                    })
 
@@ -341,30 +341,28 @@ def calculateCurrentDayOfYear(text: str) -> int:
     The map stores the cumuliative number of days BEFORE the month.
     This way, to calculate the day that the calendar is currently looking at,
     all that is needed is the day of the month + total number of days before
-    the current month.
+    the current month. 
     """
     map = {
-        "Jan": 0,
-        "Feb": 31,
-        "Mar": 59,
-        "Apr": 90,
+        "January": 0,
+        "Febuary": 31,
+        "March": 59,
+        "April": 90,
         "May": 120,
-        "Jun": 151,
-        "Jul": 181,
-        "Aug": 212,
-        "Sep": 243,
-        "Oct": 273,
-        "Nov": 304,
-        "Dec": 334
+        "June": 151,
+        "July": 181,
+        "August": 212,
+        "September": 243,
+        "October": 273,
+        "November": 304,
+        "December": 334
     }
+    
+    arr = text.split(" ")
+    # Grab the day, month from the text
+    day = int(arr[0])
+    month = arr[3]
 
-    # Grab the last 46 characters of the string and split it into an array.
-    arr = text[-46:].split(" ")
-    date = arr[3]
-
-    # Convert the date into the number of days that you are into the year.
-    dateArr = date.split("/")
-    day, month = int(dateArr[0]), dateArr[1]
     totalDays = day + map[month]
 
     return totalDays

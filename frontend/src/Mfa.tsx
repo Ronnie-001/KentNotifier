@@ -19,9 +19,13 @@ export default function Mfa() {
                 if (response.ok) {
                     const data = await response.json();
 
+                    if (data.status == "SUCCESS") {
+                        setStatus("success");
+                    }
+
                     if (data.status == "MFA_WAITING") {
                         setMfaCode(data.mfaAuthNumber);
-                        setStatus("success");
+                        setStatus("waiting");
                     }
                 }
 
@@ -94,6 +98,8 @@ export default function Mfa() {
                     </CardContent>
 
                     <CardFooter className="bg-slate-50/50 p-6 rounded-b-lg border-t flex justify-center">
+                         {/*TODO: if the MFA code is visible on the screen, grey out the "Skip to Dashboard button
+                            and replace the text with: Enter the provided MFA code"*/}
                          {status === 'success' && (
                              <Button variant="link" onClick={() => navigate("/home")} className="text-slate-500">
                                  Skip to Dashboard

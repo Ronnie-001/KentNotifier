@@ -41,6 +41,7 @@ export default function Home() {
             return;
         }
 
+        // At this point, we are waiting for the base timetable to be scraped.
         const data = await response.json();
         console.log("Data returned from getting the base timetable" + data);
 
