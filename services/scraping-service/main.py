@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
-from app.routes import BaseTimetableRouter, scrapingRouter
+from app.routes import BaseTimetableRouter, scrapingRouter, statusRouter
 from app.database.dbconn import Base, engine
 
 async def CreateDbTables():
@@ -28,6 +28,7 @@ app = FastAPI(lifespan=lifespan)
 # include the different routers.
 app.include_router(BaseTimetableRouter.detailsRouter)
 app.include_router(scrapingRouter.scrapingRouter)
+app.include_router(statusRouter.statusRouter)
 
 # test endpoint
 @app.get("/scraping-service/v1/test")

@@ -78,7 +78,7 @@
         },
 
         {
-            "endpoint": "/scraping-service/v1/login-status/{userID}",
+            "endpoint": "/scraping-service/v1/login-status/{user_id}",
             "timeout": "10s",
             "method": "GET",
             "input_headers": [
@@ -96,7 +96,7 @@
             },
            "backend": [
                 {
-                    "url_pattern": "/scraping-service/v1/login-status/{userID}",
+                    "url_pattern": "/scraping-service/v1/login-status/{user_id}",
                     "method": "GET",
                     "host": ["http://scraping-service:8001"]
                 }

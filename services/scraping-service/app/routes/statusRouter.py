@@ -9,8 +9,9 @@ Define a router that will be used to check the state of the redis
 K/V store, so that polling can be used on the frontend to get the user's 
 MFA code.
 """
-@statusRouter.get("/scraping-service/v1/login-status/{userID}")
-def checkLoginStatus(user_id: str, Authorization: Annotated[str | None, Header()] = None):
+@statusRouter.get("/scraping-service/v1/login-status/{user_id}")
+def checkLoginStatus(user_id: str, 
+                     Authorization: Annotated[str | None, Header()] = None):
 
     # Check is the Auth header is there
     jwt_exception = HTTPException(
@@ -24,4 +25,7 @@ def checkLoginStatus(user_id: str, Authorization: Annotated[str | None, Header()
 
     # Grab the user dict
     user_dict = redis.hgetall(f"user:{user_id}:state")
+
+    print("[LOGS] the user dict that was fetched from redis: ", user_dict)
+
     return user_dict
