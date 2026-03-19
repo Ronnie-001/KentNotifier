@@ -3,6 +3,7 @@ import SignIn from "./SignIn"
 import Register from "./Register"
 import Sync from "./Sync"
 import Mfa from "./Mfa"
+import Home from "./Home"
 
 export default function App() {
     return (
@@ -15,7 +16,7 @@ export default function App() {
             <Route path="/sync" element={ <Sync /> } />
             <Route path="/results" element={ <Register /> } />
             <Route path="/mfa" element={ <Mfa /> } />
-
+            <Route path="/home" element={ <Home /> } />
         </Routes>
     )
 }

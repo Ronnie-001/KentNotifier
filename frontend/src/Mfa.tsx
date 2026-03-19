@@ -37,8 +37,6 @@ export default function Mfa() {
                 });
 
                 if (response.ok) {
-                    console.log("mfa: getting the response")
-                    // TODO: Fix.
                     const data = await response.json();
 
                     if (data.status == "SUCCESS") {
@@ -61,7 +59,6 @@ export default function Mfa() {
         const intervalId = setInterval(pollForMfa, 3000);
         
         return () => clearInterval(intervalId);
-
     }, [])
 
     const handleCopy = () => {
