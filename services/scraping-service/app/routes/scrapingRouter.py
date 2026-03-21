@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.schema.userDetailsSchema import WebscrapeTimetableModel
 from app.dependencies import getDb
 from app.models.table.data import Data
-from app.services.scrapingService import calculateCurrentDayOfYear, extractTimetable, getCurrentDayOfYear, loginToKentVision, navigateToTimetable, takeScreenshot
+from app.services.scrapingService import calculateCurrentDayOfYear, extractTimetable, getCurrentDayOfYear, loginToKentVision, navigate_to_timetable, take_screenshot
 from app.services.userDetailsService import getIdFromJwt
 from app.dependencies import redis, baseTimetableKey
 
@@ -56,7 +56,7 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
         # Add explicit waits so next webpage can load properly
         wait = WebDriverWait(driver, timeout=50)
         
-        driver = navigateToTimetable(driver, wait)
+        driver = navigate_to_timetable(driver, wait)
         currentDay = getCurrentDayOfYear(driver, wait)
 
         found, newData = lookForChanges(str(baseTimetableHtml), driver) 
@@ -222,7 +222,7 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
         if (data != baseTimetableHtml):
             newData.append(data)
             print("[LOGS] Appending different HTML data! Current day" + str(currentDay))
-            takeScreenshot(driver)
+            take_screenshot(driver)
 
         # Use another explicit wait to make sure that the timetable is loaded, before moving onto the next timetable.
         nextButton = wait.until(
@@ -232,7 +232,7 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
             ))
         )
         
-        takeScreenshot(driver)
+        take_screenshot(driver)
 
         wait.until(
             EC.invisibility_of_element_located((
@@ -262,7 +262,6 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
     return False, [""]
 
 
-# TODO: Implement function to collect the information from each lecture/class into an array.
 def collectTimetableData(soup) -> list[str]:
     # Filter the HTML based on the classes applied to each lecture/class
     # Only select the HTML that applies these specific classes
@@ -273,7 +272,6 @@ def collectTimetableData(soup) -> list[str]:
         content = activity.select_one(".sv-row .sv-col-xs-12 div")
         event_data = list(content.stripped_strings)
 
-        # TODO: Add check to see if the event data is empty.
         data.append(event_data)
     
     return data
@@ -285,45 +283,3 @@ def cleanData(text: str) -> str:
         return ""
 
     return text.replace("\n", "")
-
-"""
-Function purely for testing; used for putting the date back 
-into the boundaries of the first term.
-"""
-def rewindTimetable(driver, currentDay, wait):
-    count = 0;
-    while count < 8:
-        print("[LOGS] Rewinding the days of the year! Current day: " + str(currentDay))
-
-        prev_week_button = wait.until(
-            EC.element_to_be_clickable((
-                By.CSS_SELECTOR, 
-                "button[data-ttb-action='CHANGE_DATE_PREV']"
-            ))
-        )
-
-        prev_week_button.click()
-
-        wait.until(
-            EC.invisibility_of_element_located((
-                By.ID,
-                "ttb_loading_dialog"
-            ))
-        )
-
-        wait.until(
-            EC.element_to_be_clickable((
-                By.CLASS_NAME,
-                "ttb_change_date_next"
-            ))
-        )
-
-        # recalculate the currentDay
-        currentDay = getCurrentDayOfYear(driver, wait)
-
-        # increment count
-        count += 1;
-
-    print("[LOGS] Rewind over!")
-
-    return driver

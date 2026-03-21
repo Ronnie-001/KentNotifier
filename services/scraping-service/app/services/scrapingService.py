@@ -1,14 +1,18 @@
 import os
 
+from fastapi import Depends
 from selenium import webdriver
 from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from sqlalchemy.engine.interfaces import TableKey
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.table import data
 from app.dependencies import redis, baseTimetableKey
+from app.dependencies import getDb
 
 def getChromeDriver() -> WebDriver:
     # Set the options for the chrome driver that we will recieve.
@@ -27,14 +31,58 @@ Set the driver to the return type so that we can access the current state (the l
 for other things.
 """
 def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
-    kentVisionWebsite = "https://evision.kent.ac.uk/urd/sits.urd/run/siw_lgn" 
-
+    
+    # URL for the KentVision website
+    kent_vision_website = "https://evision.kent.ac.uk/urd/sits.urd/run/siw_lgn" 
     # Init the webdriver for chrome
     driver = getChromeDriver()
-
     # Add explicit waits so next webpage can load properly
-    wait = WebDriverWait(driver, timeout=30)
+    wait = WebDriverWait(driver, 60)
     
+    driver = handle_inital_navigation(driver, wait, kent_vision_website, user_id, email, password)
+
+    try:
+        signed_in_prompt = driver.find_elements(By.XPATH, "//*[contains(text(), 'Stay signed in?')]")
+
+        if signed_in_prompt and signed_in_prompt[0].is_displayed():
+            driver = handle_stay_signed_in_prompt(driver, wait, user_id)
+        else:
+            driver = handle_mfa_prompt(driver, wait, user_id)
+
+        return driver 
+
+    except TimeoutException:
+        print("[ERROR] Error when trying to log in! TimeoutException caught!")
+
+        redis.hset(f"user:{user_id}:state", mapping={
+                    "status": "FAILED",
+                    "mfa_code": "NULL",
+               })
+
+        take_screenshot(driver)
+
+    except Exception as e:
+        print("[ERROR] Ran into an error: " + str(e))
+
+        redis.hset(f"user:{user_id}:state", mapping={
+                    "status": "FAILED",
+                    "mfa_code": "NULL",
+               })
+
+        take_screenshot(driver)
+
+    return driver
+
+
+# TODO: Implement the following functions, to allow for threading to 
+# take place.
+def handle_inital_navigation(driver: WebDriver, 
+                             wait: WebDriverWait, 
+                             kent_vision_website: str, 
+                             user_id: int, 
+                             email: str,
+                             password: str) -> WebDriver:
+
     # Set the current state of the user to 'logging in'
     redis.hset(f"user:{user_id}:state", mapping={
                     "status":"LOGGING_IN",
@@ -42,12 +90,12 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
                })
 
     # Navigate to the KentVision Application Portal.
-    driver.get(kentVisionWebsite)
+    driver.get(kent_vision_website)
     studentApplicationPortalButton = driver.find_element(By.ID, "kent-student-login-button")
     studentApplicationPortalButton.click()
     print("[LOGS] Student and Staff Button clicked!")
-    
-    takeScreenshot(driver)
+
+    take_screenshot(driver)
 
     wait.until(
         EC.visibility_of_element_located((
@@ -56,7 +104,7 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
         ))
     )
 
-    takeScreenshot(driver)
+    take_screenshot(driver)
 
     # Use provided email in the input field
     emailInput = driver.find_element(By.ID, "i0116")
@@ -64,7 +112,7 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
     nextButton = driver.find_element(By.ID, "idSIButton9")
     nextButton.click()
 
-    takeScreenshot(driver)
+    take_screenshot(driver)
 
     print("[LOGS] Next button clicked!")
     
@@ -85,161 +133,11 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
 
     print("[LOGS] Waiting for the next page to appear...")
 
-    takeScreenshot(driver)
-
-    try:
-        signed_in_prompt = driver.find_elements(By.XPATH, "//*[contains(text(), 'Stay signed in?')]")
-
-        if signed_in_prompt and signed_in_prompt[0].is_displayed():
-            driver = handle_stay_signed_in_prompt(driver, wait, user_id)
-        else:
-            driver = handle_mfa_prompt(driver, wait, user_id)
-
-        return driver 
-
-    except TimeoutException:
-        print("[ERROR] Error when trying to log in! TimeoutException caught!")
-
-        redis.hset(f"user:{user_id}:state", mapping={
-                    "status": "FAILED",
-                    "mfa_code": "NULL",
-               })
-
-        takeScreenshot(driver)
-    except Exception as e:
-        print("[ERROR] Ran into an error: " + str(e))
-
-        redis.hset(f"user:{user_id}:state", mapping={
-                    "status": "FAILED",
-                    "mfa_code": "NULL",
-               })
-
-        takeScreenshot(driver)
+    take_screenshot(driver)
 
     return driver
 
-def handle_stay_signed_in_prompt(driver: WebDriver, wait: WebDriverWait, user_id: int) -> WebDriver:
-    wait.until(
-        EC.visibility_of_element_located((
-        By.XPATH, 
-        "//*[contains(text(), 'Stay signed in?')]"
-        ))
-    )
-
-    print("[LOGS] Stay signed in page found!")
-   
-    driver.implicitly_wait(5)
-
-    yesButton = driver.find_element(By.ID, "idSIButton9") 
-    yesButton.click()
-
-    driver.implicitly_wait(5)
-    
-    # Check for the main homepage
-    wait.until(
-        EC.visibility_of_element_located((
-        By.XPATH, 
-        "//*[contains(text(), 'Welcome to KentVision')]"
-        ))
-    )
-
-    print("[LOGS] Main Homepage found!")
-
-    # Set the current state of the user to 'logging in'
-    redis.hset(f"user:{user_id}:state", mapping={
-                    "status":"SUCCESS",
-                    "mfa_code": "NULL",
-               })
-
-    return driver
-
-def handle_mfa_prompt(driver: WebDriver, wait: WebDriverWait, user_id: int) -> WebDriver:
-     wait.until(
-        EC.visibility_of_element_located((
-             By.XPATH, 
-             "//*[contains(text(), 'Approve sign in request')]"
-        ))
-     )
-     
-     # Extract the MFA code from the webpage
-     mfaAuthElement = driver.find_element(By.ID, "idRichContext_DisplaySign")
-     mfaAuthNumber = mfaAuthElement.text
-     print("[LOGS] MFA Number found!: " + mfaAuthNumber)
-
-     # Set the current state of the user to 'MFA_WAITING'
-     redis.hset(f"user:{user_id}:state", mapping={
-                     "status":"MFA_WAITING",
-                     "mfa_code": mfaAuthNumber,
-                })
-     
-     # Check if the 'Stay signed in? In on screen instead
-     wait.until(
-         EC.visibility_of_element_located((
-         By.XPATH, 
-         "//*[contains(text(), 'Stay signed in?')]"
-         ))
-     )
-
-     # Set the current state of the user to 'SUCCESS'
-     redis.hset(f"user:{user_id}:state", mapping={
-                     "status":"SUCCESS",
-                     "mfa_code": mfaAuthNumber,
-                })
-
-     print("[LOGS] MFA code entered!")
-     
-     # Go to the KentVison homepage
-     yesButton = driver.find_element(By.ID, "idSIButton9") 
-     yesButton.click()
-
-     driver.implicitly_wait(10)
-
-     takeScreenshot(driver)
-
-     return driver
-
-"""
-Use to avoid StaleElementReferenceExceptions when clicking an element, 
-most likley caused due to rapid changes in the DOM.
-"""
-def clickElement(id: str, driver, wait) -> bool:
-    result = False
-    attempts = 0
-    while attempts < 5:
-        try:
-
-            wait.until(
-                EC.visibility_of_element_located((
-                    By.ID, 
-                    id
-                ))
-            )
-
-            button = driver.find_element(By.ID, id)
-            button.click()
-            result = True
-            break
-        except StaleElementReferenceException: 
-            pass
-        attempts += 1
-
-    return result;
-
-"""
-Function used to take a screenshot of the current page. 
-Mainly used for debugging purposes.
-"""
-def takeScreenshot(driver):
-    DEBUG_DIR = "/app/debug_output"
-    os.makedirs(DEBUG_DIR, exist_ok=True) 
-
-    # Take a screenshot of the current page.
-    screen_shot_path = os.path.join(DEBUG_DIR, "debug.png")
-    driver.save_screenshot(screen_shot_path)
-
-    print(f"Path to the screenshot: {screen_shot_path}")   
-
-def navigateToTimetable(driver, wait) -> WebDriver:
+def navigate_to_timetable(driver, wait) -> WebDriver:
 
     print("[LOGS] Naviagting to timetable!")
 
@@ -288,14 +186,137 @@ def navigateToTimetable(driver, wait) -> WebDriver:
 
     except TimeoutException as e:
         print("[ERROR] Timeout exception caught!: " + str(e))
-        takeScreenshot(driver)
+        take_screenshot(driver)
 
     return driver
 
 """
-Function will return the HTML for the base timetable.
+Function purely for testing; used for putting the date back 
+into the boundaries of the first term.
 """
-def findBaseTimetable(driver, wait) -> str:
+def rewind_timetable(driver, currentDay, wait) -> WebDriver:
+    count = 0;
+    while count < 8:
+        print("[LOGS] Rewinding the days of the year! Current day: " + str(currentDay))
+
+        prev_week_button = wait.until(
+            EC.element_to_be_clickable((
+                By.CSS_SELECTOR, 
+                "button[data-ttb-action='CHANGE_DATE_PREV']"
+            ))
+        )
+
+        prev_week_button.click()
+
+        wait.until(
+            EC.invisibility_of_element_located((
+                By.ID,
+                "ttb_loading_dialog"
+            ))
+        )
+
+        wait.until(
+            EC.element_to_be_clickable((
+                By.CLASS_NAME,
+                "ttb_change_date_next"
+            ))
+        )
+
+        # recalculate the currentDay
+        currentDay = getCurrentDayOfYear(driver, wait)
+
+        # increment count
+        count += 1;
+
+    print("[LOGS] Rewind over!")
+
+    return driver
+
+def handle_stay_signed_in_prompt(driver: WebDriver, wait: WebDriverWait, user_id: int) -> WebDriver:
+    wait.until(
+        EC.visibility_of_element_located((
+        By.XPATH, 
+        "//*[contains(text(), 'Stay signed in?')]"
+        ))
+    )
+
+    print("[LOGS] Stay signed in page found!")
+   
+    driver.implicitly_wait(5)
+
+    yesButton = driver.find_element(By.ID, "idSIButton9") 
+    yesButton.click()
+
+    driver.implicitly_wait(5)
+    
+    # Check for the main homepage
+    wait.until(
+        EC.visibility_of_element_located((
+            By.XPATH, 
+            "//*[contains(text(), 'Welcome to KentVision')]"
+        ))
+    )
+
+    print("[LOGS] Main Homepage found!")
+
+    # Set the current state of the user to 'logging in'
+    redis.hset(f"user:{user_id}:state", mapping={
+                    "status":"SUCCESS",
+                    "mfa_code": "NULL",
+               })
+
+    return driver
+
+def handle_mfa_prompt(driver: WebDriver, wait: WebDriverWait, user_id: int) -> WebDriver:
+     wait.until(
+        EC.visibility_of_element_located((
+             By.XPATH, 
+             "//*[contains(text(), 'Approve sign in request')]"
+        ))
+     )
+     
+     # Extract the MFA code from the webpage
+     mfaAuthElement = driver.find_element(By.ID, "idRichContext_DisplaySign")
+     mfaAuthNumber = mfaAuthElement.text
+     print("[LOGS] MFA Number found!: " + mfaAuthNumber)
+
+     # Set the current state of the user to 'MFA_WAITING'
+     redis.hset(f"user:{user_id}:state", mapping={
+                     "status":"MFA_WAITING",
+                     "mfa_code": mfaAuthNumber,
+                })
+
+     print("[LOGS]")
+    
+     # Wait for the user to enter in the MFA code.
+     # Check if the 'Stay signed in? In on screen instead
+     wait.until(
+         EC.visibility_of_element_located((
+             By.XPATH, 
+             "//*[contains(text(), 'Stay signed in?')]"
+         ))
+     )
+
+     # Set the current state of the user to 'SUCCESS'
+     redis.hset(f"user:{user_id}:state", mapping={
+                     "status":"SUCCESS",
+                     "mfa_code": mfaAuthNumber,
+                })
+
+     print("[LOGS] MFA code entered!")
+     
+     # Go to the KentVison homepage
+     yesButton = driver.find_element(By.ID, "idSIButton9") 
+     yesButton.click()
+
+     driver.implicitly_wait(10)
+
+     take_screenshot(driver)
+
+     return driver
+
+# Returns the HTML as a string 
+def find_base_timetable(driver, wait) -> str:
     try:
         currentDayofYear = getCurrentDayOfYear(driver, wait)
 
@@ -322,9 +343,66 @@ def findBaseTimetable(driver, wait) -> str:
 
     except TimeoutException:
         print("[ERROR] Unable to load the timetable page!")
-        takeScreenshot(driver)
+        take_screenshot(driver)
 
     return "NO TIMETABLE DATA"
+
+async def commit_to_database(user_id: int, 
+                             email: str,
+                             base_timetable_html,
+                             db: AsyncSession = Depends(getDb)):
+    # add a new user into the database, accociate the user's ID with their KentVision details.
+    user_details = data.Data (
+        user_id = user_id,
+        email = email,
+        base_timetable = base_timetable_html,
+    )
+    
+    db.add(user_details)
+    await db.commit()
+    await db.refresh(user_details)
+
+
+"""
+Use to avoid StaleElementReferenceExceptions when clicking an element, 
+most likley caused due to rapid changes in the DOM.
+"""
+def clickElement(id: str, driver, wait) -> bool:
+    result = False
+    attempts = 0
+    while attempts < 5:
+        try:
+
+            wait.until(
+                EC.visibility_of_element_located((
+                    By.ID, 
+                    id
+                ))
+            )
+
+            button = driver.find_element(By.ID, id)
+            button.click()
+            result = True
+            break
+        except StaleElementReferenceException: 
+            pass
+        attempts += 1
+
+    return result;
+
+"""
+Function used to take a screenshot of the current page. 
+Mainly used for debugging purposes.
+"""
+def take_screenshot(driver):
+    DEBUG_DIR = "/app/debug_output"
+    os.makedirs(DEBUG_DIR, exist_ok=True) 
+
+    # Take a screenshot of the current page.
+    screen_shot_path = os.path.join(DEBUG_DIR, "debug.png")
+    driver.save_screenshot(screen_shot_path)
+
+    print(f"Path to the screenshot: {screen_shot_path}")   
 
 """
 Function used to get the current day of the year on the 
@@ -358,7 +436,7 @@ def calculateCurrentDayOfYear(text: str) -> int:
     map = {
         "January": 0,
 
-        # TODO: Change the name back to Febuary, they spelt the name of the month wrong
+        # NOTE: Change the name back to Febuary, they spelt the name of the month wrong
         "February": 31,
         "March": 59,
         "April": 90,

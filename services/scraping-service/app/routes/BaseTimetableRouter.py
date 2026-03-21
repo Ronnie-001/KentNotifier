@@ -1,4 +1,5 @@
 from typing import Annotated
+
 from fastapi import APIRouter, Depends, Header
 from fastapi.exceptions import HTTPException
 
@@ -7,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.schema.userDetailsSchema import LoginDetailsModel
 from app.models.table import data
-from app.routes.scrapingRouter import rewindTimetable
-from app.services.scrapingService import findBaseTimetable, getCurrentDayOfYear, loginToKentVision, navigateToTimetable
+from app.services.scrapingService import rewind_timetable
+from app.services.scrapingService import find_base_timetable, getCurrentDayOfYear, loginToKentVision, navigate_to_timetable
 from app.services.userDetailsService import getIdFromJwt
 from app.dependencies import getDb
 
@@ -42,18 +43,18 @@ async def getBaseTimetable(details: LoginDetailsModel,
     users_id = await getIdFromJwt(Authorization.split(" "))
     
     driver = loginToKentVision(details.email, details.password, users_id)
-
+    
     # Add explicit waits so next webpage can load properly
     wait = WebDriverWait(driver, timeout=120)
 
-    driver = navigateToTimetable(driver, wait)
+    driver = navigate_to_timetable(driver, wait)
    
     # TO BE REMOVED: rewind the timetable
     currentDay = getCurrentDayOfYear(driver, wait)
 
-    driver = rewindTimetable(driver, currentDay, wait)
+    driver = rewind_timetable(driver, currentDay, wait)
 
-    baseTimetableHtml = findBaseTimetable(driver, wait)
+    baseTimetableHtml = find_base_timetable(driver, wait)
 
     driver.quit()
 

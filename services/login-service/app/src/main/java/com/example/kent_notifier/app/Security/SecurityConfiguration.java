@@ -59,7 +59,7 @@ public class SecurityConfiguration {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // TODO: This is just for testing, change once you have an acutal domain to use.
+        // TO CHANGE: This is just for testing, change once you have an acutal domain to use.
         config.setAllowedOrigins(List.of(
             "http://localhost:5173" 
         ));

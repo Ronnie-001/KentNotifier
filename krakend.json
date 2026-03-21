@@ -79,7 +79,7 @@
 
         {
             "endpoint": "/scraping-service/v1/login-status/{user_id}",
-            "timeout": "10s",
+            "timeout": "90s",
             "method": "GET",
             "input_headers": [
                 "Authorization"
