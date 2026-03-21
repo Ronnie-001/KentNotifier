@@ -42,18 +42,21 @@ export default function Mfa() {
                 if (response.ok) {
                     const data = await response.json();
 
+                    console.log("PRINTING THE DATA: " + data);
+
                     if (data.status == "SUCCESS") {
                         setStatus("success");
+                        setMfaCode(data.mfa_code);
                     }
 
                     if (data.status == "MFA_WAITING") {
-                        setMfaCode(data.mfa_code);
                         setStatus("waiting");
+                        setMfaCode(data.mfa_code);
                     }
 
                     if (data.status == "FAILED") {
-                        console.log("MFA code retreival failed! redirecting back to login");
-                        navigate("/sync")
+                        console.log("MFA code retreival failed! redirecting back to /sync");
+                        navigate("/sync");
                         return;
                     }
                 }
@@ -97,8 +100,7 @@ export default function Mfa() {
                     </CardHeader>
 
                     <CardContent className="flex flex-col items-center justify-center py-6 space-y-6">
-                        
-                        {status === 'waiting' ? (
+                        {status === 'scraping' ? (
                             <div className="flex flex-col items-center gap-4">
                                 <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
                                 <p className="text-sm text-slate-500 animate-pulse">Scraping email inbox...</p>
