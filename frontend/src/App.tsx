@@ -8,14 +8,16 @@ import Home from "./Home"
 export default function App() {
     return (
         <Routes>
-            {/* The registration routes*/}
+            {/* The registration routes */}
             <Route path="/" element={ <SignIn /> } />
             <Route path="/register" element={ <Register /> } />
 
-            {/* Main pages of the website*/}
+            {/* Scraping routes */}
             <Route path="/sync" element={ <Sync /> } />
-            <Route path="/results" element={ <Register /> } />
             <Route path="/mfa" element={ <Mfa /> } />
+            
+            {/* Dashboard routes */}
+            <Route path="/results" element={ <Register /> } />
             <Route path="/home" element={ <Home /> } />
         </Routes>
     )

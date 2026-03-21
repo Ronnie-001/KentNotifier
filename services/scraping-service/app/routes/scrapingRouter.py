@@ -160,7 +160,7 @@ def lookForChanges(baseTimetableHtml: str, driver) -> Tuple[bool, list[str]]:
         print("[LOGS] Timetable found! Beginning Check...")    
 
         # Parse the page for the current dates at which the timetable displays for.
-        timetableSubheading = driver.find_element(By.CLASS_NAME, "sitsjqtttitle")
+        timetableSubheading = driver.find_element(By.CLASS_NAME, "ttb_title")          
   
         print("[LOGS] Calculating the current day of year...")
         # Webscrape every other timtable until the end of term
@@ -181,7 +181,6 @@ def lookForChanges(baseTimetableHtml: str, driver) -> Tuple[bool, list[str]]:
 
 """
 Function used to find any differences between the user's usual activities during the week
-
 and the current week being checked.
 """
 def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool, list[str]]:

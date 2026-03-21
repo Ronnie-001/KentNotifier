@@ -34,7 +34,7 @@ export default function Home() {
                 "Authorization": `Bearer ${token}`
             }
         });
-        
+
         if (!response.ok) {
             console.log("Error trying to get the base timetable: " + response.status);
             alert("An error occured!");
@@ -46,8 +46,9 @@ export default function Home() {
         console.log("Data returned from getting the base timetable" + data);
 
         setLoading(false);
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        console.log("Navigating to the /mfa page")        
 
         // Navigate to the page where the MFA code will be displayed
         navigate("/mfa");

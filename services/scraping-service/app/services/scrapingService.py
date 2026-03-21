@@ -33,7 +33,7 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
     driver = getChromeDriver()
 
     # Add explicit waits so next webpage can load properly
-    wait = WebDriverWait(driver, timeout=50)
+    wait = WebDriverWait(driver, timeout=30)
     
     # Set the current state of the user to 'logging in'
     redis.hset(f"user:{user_id}:state", mapping={
@@ -88,102 +88,103 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
     takeScreenshot(driver)
 
     try:
-        # Check if the 'Stay signed in? In on screen instead
-        wait.until(
-            EC.visibility_of_element_located((
-            By.XPATH, 
-            "//*[contains(text(), 'Stay signed in?')]"
-            ))
-        )
+        signed_in_prompt = driver.find_elements(By.XPATH, "//*[contains(text(), 'Stay signed in?')]")
 
-        print("[LOGS] Stay signed in page found!")
-       
-        driver.implicitly_wait(5)
-
-        yesButton = driver.find_element(By.ID, "idSIButton9") 
-        yesButton.click()
-
-        driver.implicitly_wait(5)
-        
-        # Check for the main homepage
-        wait.until(
-            EC.visibility_of_element_located((
-            By.XPATH, 
-            "//*[contains(text(), 'Welcome to KentVision')]"
-            ))
-        )
-
-        print("[LOGS] Main Homepage found!")
-
-        # Set the current state of the user to 'logging in'
-        redis.hset(f"user:{user_id}:state", mapping={
-                        "status":"SUCCESS",
-                        "mfa_code": "NULL",
-                   })
+        if signed_in_prompt and signed_in_prompt[0].is_displayed():
+            driver = handle_stay_signed_in_prompt(driver, wait, user_id)
+        else:
+            driver = handle_mfa_prompt(driver, wait, user_id)
 
         return driver 
 
     except TimeoutException:
         print("[ERROR] Error when trying to log in! TimeoutException caught!")
-        print("[LOGS] Checking if MFA page was seen instead...")
-        
         takeScreenshot(driver)
-
-        # Check if the MFA Code appears instead. 
-        try:
-            wait.until(
-               EC.visibility_of_element_located((
-                    By.XPATH, 
-                    "//*[contains(text(), 'Approve sign in request')]"
-               ))
-            )
-            
-            # Extract the MFA code from the webpage
-            mfaAuthElement = driver.find_element(By.ID, "idRichContext_DisplaySign")
-            mfaAuthNumber = mfaAuthElement.text
-            print("[LOGS] MFA Number found!: " + mfaAuthNumber)
-
-            # Set the current state of the user to 'MFA_WAITING'
-            redis.hset(f"user:{user_id}:state", mapping={
-                            "status":"MFA_WAITING",
-                            "mfa_code": mfaAuthNumber,
-                       })
-            
-            # Check if the 'Stay signed in? In on screen instead
-            wait.until(
-                EC.visibility_of_element_located((
-                By.XPATH, 
-                "//*[contains(text(), 'Stay signed in?')]"
-                ))
-            )
-
-            # Set the current state of the user to 'SUCCESS'
-            redis.hset(f"user:{user_id}:state", mapping={
-                            "status":"SUCCESS",
-                            "mfa_code": mfaAuthNumber,
-                       })
-
-            print("[LOGS] MFA code entered!")
-            
-            # Go to the KentVison homepage
-            yesButton = driver.find_element(By.ID, "idSIButton9") 
-            yesButton.click()
-    
-            driver.implicitly_wait(10)
-
-            takeScreenshot(driver)
-
-            return driver
-
-        except TimeoutException:
-           print("[ERROR] Error when trying to log in! TimeoutException caught!")
-           takeScreenshot(driver)
-    
     except Exception as e:
         print("[ERROR] Ran into an error: " + str(e))
         takeScreenshot(driver)
 
     return driver
+
+def handle_stay_signed_in_prompt(driver: WebDriver, wait: WebDriverWait, user_id: int) -> WebDriver:
+    wait.until(
+        EC.visibility_of_element_located((
+        By.XPATH, 
+        "//*[contains(text(), 'Stay signed in?')]"
+        ))
+    )
+
+    print("[LOGS] Stay signed in page found!")
+   
+    driver.implicitly_wait(5)
+
+    yesButton = driver.find_element(By.ID, "idSIButton9") 
+    yesButton.click()
+
+    driver.implicitly_wait(5)
+    
+    # Check for the main homepage
+    wait.until(
+        EC.visibility_of_element_located((
+        By.XPATH, 
+        "//*[contains(text(), 'Welcome to KentVision')]"
+        ))
+    )
+
+    print("[LOGS] Main Homepage found!")
+
+    # Set the current state of the user to 'logging in'
+    redis.hset(f"user:{user_id}:state", mapping={
+                    "status":"SUCCESS",
+                    "mfa_code": "NULL",
+               })
+
+    return driver
+
+def handle_mfa_prompt(driver: WebDriver, wait: WebDriverWait, user_id: int) -> WebDriver:
+     wait.until(
+        EC.visibility_of_element_located((
+             By.XPATH, 
+             "//*[contains(text(), 'Approve sign in request')]"
+        ))
+     )
+     
+     # Extract the MFA code from the webpage
+     mfaAuthElement = driver.find_element(By.ID, "idRichContext_DisplaySign")
+     mfaAuthNumber = mfaAuthElement.text
+     print("[LOGS] MFA Number found!: " + mfaAuthNumber)
+
+     # Set the current state of the user to 'MFA_WAITING'
+     redis.hset(f"user:{user_id}:state", mapping={
+                     "status":"MFA_WAITING",
+                     "mfa_code": mfaAuthNumber,
+                })
+     
+     # Check if the 'Stay signed in? In on screen instead
+     wait.until(
+         EC.visibility_of_element_located((
+         By.XPATH, 
+         "//*[contains(text(), 'Stay signed in?')]"
+         ))
+     )
+
+     # Set the current state of the user to 'SUCCESS'
+     redis.hset(f"user:{user_id}:state", mapping={
+                     "status":"SUCCESS",
+                     "mfa_code": mfaAuthNumber,
+                })
+
+     print("[LOGS] MFA code entered!")
+     
+     # Go to the KentVison homepage
+     yesButton = driver.find_element(By.ID, "idSIButton9") 
+     yesButton.click()
+
+     driver.implicitly_wait(10)
+
+     takeScreenshot(driver)
+
+     return driver
 
 """
 Use to avoid StaleElementReferenceExceptions when clicking an element, 
@@ -232,8 +233,8 @@ def navigateToTimetable(driver, wait) -> WebDriver:
 
     wait.until(
         EC.visibility_of_element_located((
-        By.XPATH, 
-        "//*[contains(text(), 'My Timetable & Events')]"
+            By.XPATH, 
+            "//*[contains(text(), 'My Timetable & Events')]"
         ))
     )
 
@@ -315,7 +316,6 @@ def findBaseTimetable(driver, wait) -> str:
 
 """
 Function used to get the current day of the year on the 
-
 """
 def getCurrentDayOfYear(driver, wait):
 
@@ -418,7 +418,6 @@ def findBaseTimetableDate(currentDay, borderDay, driver, wait):
 
             currentDay = getCurrentDayOfYear(driver, wait)
             print("[LOGS] New day found! " + str(currentDay))
-
 
 # Function used to grab the HTML data from the base timetable.
 def extractTimetable(driver) -> str:

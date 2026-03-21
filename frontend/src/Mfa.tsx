@@ -7,6 +7,10 @@ import Navbar from "@/components/ui/navbar"
 import { jwtDecode } from "jwt-decode"
 
 export default function Mfa() {
+    
+    console.log("In the Mfa() function!")
+
+
     const [status, setStatus] = useState("scraping");
     const [mfaCode, setMfaCode] = useState("");
     const [copied, setCopied] = useState(false);
@@ -89,7 +93,7 @@ export default function Mfa() {
 
                     <CardContent className="flex flex-col items-center justify-center py-6 space-y-6">
                         
-                        {status === 'scraping' ? (
+                        {status === 'waiting' ? (
                             <div className="flex flex-col items-center gap-4">
                                 <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
                                 <p className="text-sm text-slate-500 animate-pulse">Scraping email inbox...</p>
@@ -120,7 +124,7 @@ export default function Mfa() {
                             and replace the text with: Enter the provided MFA code"*/}
                          {status === 'success' && (
                              <Button variant="link" onClick={() => navigate("/home")} className="text-slate-500">
-                                 Skip to Dashboard
+                                 Move to Dashboard
                              </Button>
                          )}
                     </CardFooter>
