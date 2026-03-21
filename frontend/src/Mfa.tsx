@@ -10,7 +10,6 @@ export default function Mfa() {
     
     console.log("In the Mfa() function!")
 
-
     const [status, setStatus] = useState("scraping");
     const [mfaCode, setMfaCode] = useState("");
     const [copied, setCopied] = useState(false);
@@ -48,8 +47,14 @@ export default function Mfa() {
                     }
 
                     if (data.status == "MFA_WAITING") {
-                        setMfaCode(data.mfaAuthNumber);
+                        setMfaCode(data.mfa_code);
                         setStatus("waiting");
+                    }
+
+                    if (data.status == "FAILED") {
+                        console.log("MFA code retreival failed! redirecting back to login");
+                        navigate("/sync")
+                        return;
                     }
                 }
 

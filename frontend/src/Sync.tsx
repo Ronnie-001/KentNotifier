@@ -26,7 +26,7 @@ export default function Home() {
         await new Promise(resolve => setTimeout(resolve, 3000));
         console.log("Scraping started for:", email);
         
-        const response = await fetch("http://localhost:8080/scraping-service/v1/get-login-details", {
+        fetch("http://localhost:8080/scraping-service/v1/get-login-details", {
             method: "POST",
             body: JSON.stringify({ email: email, password: password }),
             headers: {
@@ -34,16 +34,6 @@ export default function Home() {
                 "Authorization": `Bearer ${token}`
             }
         });
-
-        if (!response.ok) {
-            console.log("Error trying to get the base timetable: " + response.status);
-            alert("An error occured!");
-            return;
-        }
-
-        // At this point, we are waiting for the base timetable to be scraped.
-        const data = await response.json();
-        console.log("Data returned from getting the base timetable" + data);
 
         setLoading(false);
         await new Promise(resolve => setTimeout(resolve, 1000));

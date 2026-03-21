@@ -99,9 +99,21 @@ def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
 
     except TimeoutException:
         print("[ERROR] Error when trying to log in! TimeoutException caught!")
+
+        redis.hset(f"user:{user_id}:state", mapping={
+                    "status": "FAILED",
+                    "mfa_code": "NULL",
+               })
+
         takeScreenshot(driver)
     except Exception as e:
         print("[ERROR] Ran into an error: " + str(e))
+
+        redis.hset(f"user:{user_id}:state", mapping={
+                    "status": "FAILED",
+                    "mfa_code": "NULL",
+               })
+
         takeScreenshot(driver)
 
     return driver
@@ -198,8 +210,8 @@ def clickElement(id: str, driver, wait) -> bool:
 
             wait.until(
                 EC.visibility_of_element_located((
-                By.ID, 
-                id
+                    By.ID, 
+                    id
                 ))
             )
 
