@@ -1,4 +1,5 @@
 import os
+import asyncio
 
 from fastapi import Depends
 from selenium import webdriver
@@ -26,62 +27,36 @@ def getChromeDriver() -> WebDriver:
 
     return driver
 
-""""
-Set the driver to the return type so that we can access the current state (the logged in user) 
-for other things.
-"""
-def loginToKentVision(email: str, password: str, user_id: int) -> WebDriver:
-    
-    # URL for the KentVision website
-    kent_vision_website = "https://evision.kent.ac.uk/urd/sits.urd/run/siw_lgn" 
-    # Init the webdriver for chrome
+# Orchestrator function that handles logging into kentvision, scraping the base timetable and commiting this to the database.
+def run_background_task(email: str, password: str, user_id: int):
+
     driver = getChromeDriver()
+
     # Add explicit waits so next webpage can load properly
     wait = WebDriverWait(driver, 60)
+
+    driver = login_to_kent_vision(driver, wait, user_id, email, password)
     
-    driver = handle_inital_navigation(driver, wait, kent_vision_website, user_id, email, password)
+    driver = navigate_to_timetable(driver, wait)
 
-    try:
-        signed_in_prompt = driver.find_elements(By.XPATH, "//*[contains(text(), 'Stay signed in?')]")
+    # Rewind the timetable so simulate webscraping during term time.
+    current_day = get_current_day_of_year(driver, wait)
+    driver = rewind_timetable(driver, current_day, wait)
 
-        if signed_in_prompt and signed_in_prompt[0].is_displayed():
-            driver = handle_stay_signed_in_prompt(driver, wait, user_id)
-        else:
-            driver = handle_mfa_prompt(driver, wait, user_id)
+    base_timetable_html = find_base_timetable(driver, wait)
+    
+    driver.quit()
 
-        return driver 
+    asyncio.run(commit_to_database(user_id, email, base_timetable_html))
 
-    except TimeoutException:
-        print("[ERROR] Error when trying to log in! TimeoutException caught!")
-
-        redis.hset(f"user:{user_id}:state", mapping={
-                    "status": "FAILED",
-                    "mfa_code": "NULL",
-               })
-
-        take_screenshot(driver)
-
-    except Exception as e:
-        print("[ERROR] Ran into an error: " + str(e))
-
-        redis.hset(f"user:{user_id}:state", mapping={
-                    "status": "FAILED",
-                    "mfa_code": "NULL",
-               })
-
-        take_screenshot(driver)
-
-    return driver
-
-
-# TODO: Implement the following functions, to allow for threading to 
-# take place.
+# Starts filling out the sign in  information.
 def handle_inital_navigation(driver: WebDriver, 
                              wait: WebDriverWait, 
-                             kent_vision_website: str, 
                              user_id: int, 
                              email: str,
                              password: str) -> WebDriver:
+
+    kent_vision_website = "https://evision.kent.ac.uk/urd/sits.urd/run/siw_lgn" 
 
     # Set the current state of the user to 'logging in'
     redis.hset(f"user:{user_id}:state", mapping={
@@ -137,6 +112,130 @@ def handle_inital_navigation(driver: WebDriver,
 
     return driver
 
+def login_to_kent_vision(driver: WebDriver,
+                         wait: WebDriverWait, 
+                         user_id: int,
+                         email: str,
+                         password: str) -> WebDriver:
+
+    driver = handle_inital_navigation(driver, wait, user_id, email, password)
+    
+    try:
+        signed_in_prompt = driver.find_elements(By.XPATH, "//*[contains(text(), 'Stay signed in?')]")
+
+        if signed_in_prompt and signed_in_prompt[0].is_displayed():
+            driver = handle_stay_signed_in_prompt(driver, wait, user_id)
+        else:
+            driver = handle_mfa_prompt(driver, wait, user_id)
+        
+        return driver
+
+    except TimeoutException:
+        print("[ERROR] Error when trying to log in! TimeoutException caught!")
+
+        redis.hset(f"user:{user_id}:state", mapping={
+                    "status": "FAILED",
+                    "mfa_code": "NULL",
+               })
+
+        take_screenshot(driver)
+
+    except Exception as e:
+        print("[ERROR] Ran into an error: " + str(e))
+
+        redis.hset(f"user:{user_id}:state", mapping={
+                    "status": "FAILED",
+                    "mfa_code": "NULL",
+               })
+
+        take_screenshot(driver)
+
+    return driver
+
+def handle_stay_signed_in_prompt(driver: WebDriver, wait: WebDriverWait, user_id: int) -> WebDriver:
+    wait.until(
+        EC.visibility_of_element_located((
+        By.XPATH, 
+        "//*[contains(text(), 'Stay signed in?')]"
+        ))
+    )
+
+    print("[LOGS] Stay signed in page found!")
+   
+    driver.implicitly_wait(5)
+
+    yesButton = driver.find_element(By.ID, "idSIButton9") 
+    yesButton.click()
+
+    driver.implicitly_wait(5)
+    
+    # Check for the main homepage
+    wait.until(
+        EC.visibility_of_element_located((
+            By.XPATH, 
+            "//*[contains(text(), 'Welcome to KentVision')]"
+        ))
+    )
+
+    print("[LOGS] Main Homepage found!")
+
+    # Set the current state of the user to 'logging in'
+    redis.hset(f"user:{user_id}:state", mapping={
+                    "status":"SUCCESS",
+                    "mfa_code": "NULL",
+               })
+
+    return driver
+
+def handle_mfa_prompt(driver: WebDriver, wait: WebDriverWait, user_id: int) -> WebDriver:
+
+     wait.until(
+        EC.visibility_of_element_located((
+             By.XPATH, 
+             "//*[contains(text(), 'Approve sign in request')]"
+        ))
+     )
+     
+     # Extract the MFA code from the webpage
+     mfaAuthElement = driver.find_element(By.ID, "idRichContext_DisplaySign")
+     mfaAuthNumber = mfaAuthElement.text
+     print("[LOGS] MFA Number found!: " + mfaAuthNumber)
+
+     # Set the current state of the user to 'MFA_WAITING'
+     redis.hset(f"user:{user_id}:state", mapping={
+                     "status":"MFA_WAITING",
+                     "mfa_code": mfaAuthNumber,
+                })
+
+     print("[LOGS]")
+    
+     # Wait for the user to enter in the MFA code.
+     # Check if the 'Stay signed in? In on screen instead
+     wait.until(
+         EC.visibility_of_element_located((
+             By.XPATH, 
+             "//*[contains(text(), 'Stay signed in?')]"
+         ))
+     )
+
+     # Set the current state of the user to 'SUCCESS'
+     redis.hset(f"user:{user_id}:state", mapping={
+                     "status":"SUCCESS",
+                     "mfa_code": mfaAuthNumber,
+                })
+
+     print("[LOGS] MFA code entered!")
+     
+     # Go to the KentVison homepage
+     yesButton = driver.find_element(By.ID, "idSIButton9") 
+     yesButton.click()
+
+     driver.implicitly_wait(10)
+
+     take_screenshot(driver)
+
+     return driver
+
 def navigate_to_timetable(driver, wait) -> WebDriver:
 
     print("[LOGS] Naviagting to timetable!")
@@ -190,6 +289,51 @@ def navigate_to_timetable(driver, wait) -> WebDriver:
 
     return driver
 
+def find_base_timetable(driver, wait) -> str:
+    try:
+        currentDayofYear = get_current_day_of_year(driver, wait)
+
+        print("[LOGS] Current days into the year: " + str(currentDayofYear))
+
+        term1Start, term1End = 288, 365
+        term2Start, term2End = 19, 79
+        term3Start, term3End = 110, 170
+        
+        # Look for the first week of term.
+        if (currentDayofYear < term1End and currentDayofYear > term1Start):
+            findBaseTimetableDate(currentDayofYear, term1Start, driver, wait)
+        elif (currentDayofYear < term2End and currentDayofYear > term2Start):
+            findBaseTimetableDate(currentDayofYear, term2Start, driver, wait)
+        elif (currentDayofYear < term3End and currentDayofYear > term3Start):
+            findBaseTimetableDate(currentDayofYear, term3Start, driver, wait)
+            
+        # Once you have found the base timetable, webscrape it.
+        timetableData = extractTimetable(driver)
+
+        redis.set(baseTimetableKey, 'True') 
+
+        return timetableData
+
+    except TimeoutException:
+        print("[ERROR] Unable to load the timetable page!")
+        take_screenshot(driver)
+
+    return "NO TIMETABLE DATA"
+
+def get_current_day_of_year(driver: WebDriver, wait: WebDriverWait) -> int:
+    wait.until(
+        EC.visibility_of_element_located((
+            By.CLASS_NAME,
+            "ttb_title"
+        ))
+    )
+
+    # Parse the page for the current dates at which the timetable displays for.
+    timetableSubheading = driver.find_element(By.CLASS_NAME, "ttb_title")          
+    currentDayofYear = calculateCurrentDayOfYear(timetableSubheading.text)
+
+    return currentDayofYear
+
 """
 Function purely for testing; used for putting the date back 
 into the boundaries of the first term.
@@ -223,7 +367,7 @@ def rewind_timetable(driver, currentDay, wait) -> WebDriver:
         )
 
         # recalculate the currentDay
-        currentDay = getCurrentDayOfYear(driver, wait)
+        currentDay = get_current_day_of_year(driver, wait)
 
         # increment count
         count += 1;
@@ -232,125 +376,11 @@ def rewind_timetable(driver, currentDay, wait) -> WebDriver:
 
     return driver
 
-def handle_stay_signed_in_prompt(driver: WebDriver, wait: WebDriverWait, user_id: int) -> WebDriver:
-    wait.until(
-        EC.visibility_of_element_located((
-        By.XPATH, 
-        "//*[contains(text(), 'Stay signed in?')]"
-        ))
-    )
-
-    print("[LOGS] Stay signed in page found!")
-   
-    driver.implicitly_wait(5)
-
-    yesButton = driver.find_element(By.ID, "idSIButton9") 
-    yesButton.click()
-
-    driver.implicitly_wait(5)
-    
-    # Check for the main homepage
-    wait.until(
-        EC.visibility_of_element_located((
-            By.XPATH, 
-            "//*[contains(text(), 'Welcome to KentVision')]"
-        ))
-    )
-
-    print("[LOGS] Main Homepage found!")
-
-    # Set the current state of the user to 'logging in'
-    redis.hset(f"user:{user_id}:state", mapping={
-                    "status":"SUCCESS",
-                    "mfa_code": "NULL",
-               })
-
-    return driver
-
-def handle_mfa_prompt(driver: WebDriver, wait: WebDriverWait, user_id: int) -> WebDriver:
-     wait.until(
-        EC.visibility_of_element_located((
-             By.XPATH, 
-             "//*[contains(text(), 'Approve sign in request')]"
-        ))
-     )
-     
-     # Extract the MFA code from the webpage
-     mfaAuthElement = driver.find_element(By.ID, "idRichContext_DisplaySign")
-     mfaAuthNumber = mfaAuthElement.text
-     print("[LOGS] MFA Number found!: " + mfaAuthNumber)
-
-     # Set the current state of the user to 'MFA_WAITING'
-     redis.hset(f"user:{user_id}:state", mapping={
-                     "status":"MFA_WAITING",
-                     "mfa_code": mfaAuthNumber,
-                })
-
-     print("[LOGS]")
-    
-     # Wait for the user to enter in the MFA code.
-     # Check if the 'Stay signed in? In on screen instead
-     wait.until(
-         EC.visibility_of_element_located((
-             By.XPATH, 
-             "//*[contains(text(), 'Stay signed in?')]"
-         ))
-     )
-
-     # Set the current state of the user to 'SUCCESS'
-     redis.hset(f"user:{user_id}:state", mapping={
-                     "status":"SUCCESS",
-                     "mfa_code": mfaAuthNumber,
-                })
-
-     print("[LOGS] MFA code entered!")
-     
-     # Go to the KentVison homepage
-     yesButton = driver.find_element(By.ID, "idSIButton9") 
-     yesButton.click()
-
-     driver.implicitly_wait(10)
-
-     take_screenshot(driver)
-
-     return driver
-
-# Returns the HTML as a string 
-def find_base_timetable(driver, wait) -> str:
-    try:
-        currentDayofYear = getCurrentDayOfYear(driver, wait)
-
-        print("[LOGS] Current days into the year: " + str(currentDayofYear))
-
-        term1Start, term1End = 288, 365
-        term2Start, term2End = 19, 79
-        term3Start, term3End = 110, 170
-        
-        # Look for the first week of term.
-        if (currentDayofYear < term1End and currentDayofYear > term1Start):
-            findBaseTimetableDate(currentDayofYear, term1Start, driver, wait)
-        elif (currentDayofYear < term2End and currentDayofYear > term2Start):
-            findBaseTimetableDate(currentDayofYear, term2Start, driver, wait)
-        elif (currentDayofYear < term3End and currentDayofYear > term3Start):
-            findBaseTimetableDate(currentDayofYear, term3Start, driver, wait)
-            
-        # Once you have found the base timetable, webscrape it.
-        timetableData = extractTimetable(driver)
-
-        redis.set(baseTimetableKey, 'True') 
-
-        return timetableData
-
-    except TimeoutException:
-        print("[ERROR] Unable to load the timetable page!")
-        take_screenshot(driver)
-
-    return "NO TIMETABLE DATA"
-
 async def commit_to_database(user_id: int, 
                              email: str,
                              base_timetable_html,
                              db: AsyncSession = Depends(getDb)):
+
     # add a new user into the database, accociate the user's ID with their KentVision details.
     user_details = data.Data (
         user_id = user_id,
@@ -361,7 +391,6 @@ async def commit_to_database(user_id: int,
     db.add(user_details)
     await db.commit()
     await db.refresh(user_details)
-
 
 """
 Use to avoid StaleElementReferenceExceptions when clicking an element, 
@@ -404,23 +433,6 @@ def take_screenshot(driver):
 
     print(f"Path to the screenshot: {screen_shot_path}")   
 
-"""
-Function used to get the current day of the year on the 
-"""
-def getCurrentDayOfYear(driver, wait):
-
-    wait.until(
-        EC.visibility_of_element_located((
-            By.CLASS_NAME,
-            "ttb_title"
-        ))
-    )
-
-    # Parse the page for the current dates at which the timetable displays for.
-    timetableSubheading = driver.find_element(By.CLASS_NAME, "ttb_title")          
-    currentDayofYear = calculateCurrentDayOfYear(timetableSubheading.text)
-
-    return currentDayofYear
 
 """
 Function used to calculate the current day of the year of the FIRST day
@@ -452,8 +464,6 @@ def calculateCurrentDayOfYear(text: str) -> int:
     
     arr = text.split(" ")
 
-    # Check the size of the array in case two months are included where 
-    # the date is.
     
     day = -1
     month = ""
@@ -506,7 +516,7 @@ def findBaseTimetableDate(currentDay, borderDay, driver, wait):
 
             previousWeekButton.click()
 
-            currentDay = getCurrentDayOfYear(driver, wait)
+            currentDay = get_current_day_of_year(driver, wait)
             print("[LOGS] New day found! " + str(currentDay))
 
 # Function used to grab the HTML data from the base timetable.

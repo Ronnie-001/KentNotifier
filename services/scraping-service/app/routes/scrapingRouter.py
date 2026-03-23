@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.schema.userDetailsSchema import WebscrapeTimetableModel
 from app.dependencies import getDb
 from app.models.table.data import Data
-from app.services.scrapingService import calculateCurrentDayOfYear, extractTimetable, getCurrentDayOfYear, loginToKentVision, navigate_to_timetable, take_screenshot
+from app.services.scrapingService import calculateCurrentDayOfYear, extractTimetable, get_current_day_of_year, getChromeDriver, login_to_kent_vision, navigate_to_timetable, take_screenshot
 from app.services.userDetailsService import getIdFromJwt
 from app.dependencies import redis, baseTimetableKey
 
@@ -50,14 +50,14 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
         
         soup = BeautifulSoup(str(baseTimetableHtml), "html.parser") 
         baseTimetable_info = collectTimetableData(soup)
-        
-        driver = loginToKentVision(details.email, details.password, user_id)
-
+    
+        driver = getChromeDriver()
         # Add explicit waits so next webpage can load properly
         wait = WebDriverWait(driver, timeout=50)
-        
+       
+        driver = login_to_kent_vision(driver, wait, user_id, details.email, details.password)
+
         driver = navigate_to_timetable(driver, wait)
-        currentDay = getCurrentDayOfYear(driver, wait)
 
         found, newData = lookForChanges(str(baseTimetableHtml), driver) 
 
@@ -69,7 +69,6 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
             Use beautiful soup to parse the newData and the base timetable html.
             Compare exactly to what is different about them, 
             """
-            num = 0;
             for data in newData:
                 # Each entry into the dict will contain the data that needs to be returned
                 # Create new soup for each entry and grab the timetable data
@@ -252,7 +251,7 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
             ))
         )
         # Function uses an explicit wait to grab the current day.
-        currentDay = getCurrentDayOfYear(driver, wait)
+        currentDay = get_current_day_of_year(driver, wait)
 
         print("[LOGS] Moving onto the next timetable! current day: " + str(currentDay))
 

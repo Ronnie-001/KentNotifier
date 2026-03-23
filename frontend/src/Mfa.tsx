@@ -44,13 +44,13 @@ export default function Mfa() {
 
                     console.log("PRINTING THE DATA: " + data);
 
-                    if (data.status == "SUCCESS") {
-                        setStatus("success");
+                    if (data.status == "MFA_WAITING") {
+                        setStatus("waiting");
                         setMfaCode(data.mfa_code);
                     }
 
-                    if (data.status == "MFA_WAITING") {
-                        setStatus("waiting");
+                    if (data.status == "SUCCESS") {
+                        setStatus("success");
                         setMfaCode(data.mfa_code);
                     }
 

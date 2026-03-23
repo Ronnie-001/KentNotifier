@@ -61,7 +61,7 @@ export default function SignIn() {
                         <Label htmlFor="username">Email Address</Label>
                         <Input 
                             id="username"
-                            placeholder="user@kent.ac.uk"
+                            placeholder="enter email"
                             onChange={(e) => setEmail(e.target.value)} />
                     </div>
 
@@ -74,6 +74,7 @@ export default function SignIn() {
                             </a>
                         </div>
                         <Input id="password"
+                            placeholder="enter password"
                             type="password"
                             onChange={(e) => setPassword(e.target.value)} />
                     </div>
