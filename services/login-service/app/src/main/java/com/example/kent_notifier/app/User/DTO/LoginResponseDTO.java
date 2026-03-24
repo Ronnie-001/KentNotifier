@@ -8,4 +8,6 @@ public class LoginResponseDTO {
     private String token;
 
     private Long expirationTime;
+
+    private String email;
 }

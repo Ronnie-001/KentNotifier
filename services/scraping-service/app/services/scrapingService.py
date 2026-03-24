@@ -385,8 +385,6 @@ async def commit_to_database(user_id: int,
                              base_timetable_html,
                              db: AsyncSession = Depends(getDb)):
 
-    print("[LOGS] Entered the commit to database function")
-
     # add a new user into the database, accociate the user's ID with their KentVision details.
     user_details = data.Data (
         user_id = user_id,

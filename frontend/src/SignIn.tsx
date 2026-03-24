@@ -32,6 +32,7 @@ export default function SignIn() {
             console.log("Server response: ", data);
 
             localStorage.setItem("token", data.token);
+            localStorage.setItem("email", data.email);
             navigate("/sync");
 
         } catch (error) {

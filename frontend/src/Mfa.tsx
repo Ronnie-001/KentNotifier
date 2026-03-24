@@ -8,8 +8,6 @@ import { jwtDecode } from "jwt-decode"
 
 export default function Mfa() {
     
-    console.log("In the Mfa() function!")
-
     const [status, setStatus] = useState("scraping");
     const [mfaCode, setMfaCode] = useState("");
     const [copied, setCopied] = useState(false);
@@ -52,6 +50,7 @@ export default function Mfa() {
                     if (data.status == "SUCCESS") {
                         setStatus("success");
                         setMfaCode(data.mfa_code);
+                        return;
                     }
 
                     if (data.status == "FAILED") {

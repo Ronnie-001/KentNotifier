@@ -54,7 +54,7 @@ public class UserController {
         // Use a hashmap to return the message
         Map<String, String> response = new HashMap<>();
         response.put("message", "user registered successfully!");
- 
+
         return ResponseEntity.ok(response);
     }
 
@@ -66,9 +66,11 @@ public class UserController {
         String jwt = jwtUtils.generateJwtToken(authentication);
 
         LoginResponseDTO response = new LoginResponseDTO();
-
+        
+        // Set the response
         response.setToken(jwt);
         response.setExpirationTime(jwtUtils.getExpirationTimeFromJwt(jwt).getTime());
+        response.setEmail(loginRequestDTO.getEmail());
         
         return ResponseEntity.ok(response);
     }
