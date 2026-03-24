@@ -1,3 +1,4 @@
+import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, Header, BackgroundTasks
@@ -35,12 +36,15 @@ async def getBaseTimetable(details: LoginDetailsModel,
     JWT validaion is handled using the KrakenD API gateway.
     """
     users_id = await getIdFromJwt(Authorization.split(" "))
+    
+    loop = asyncio.get_running_loop()
 
     background_tasks.add_task(
         run_background_task, 
         details.email, 
         details.password, 
-        users_id
+        users_id,
+        loop
     )
 
     return {"Message": "Base timetable successfully retreived!", "email": details.email, "user_id" : users_id}

@@ -2,6 +2,7 @@ import os
 import asyncio
 
 from fastapi import Depends
+
 from selenium import webdriver
 from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.chrome.webdriver import WebDriver
@@ -28,7 +29,7 @@ def getChromeDriver() -> WebDriver:
     return driver
 
 # Orchestrator function that handles logging into kentvision, scraping the base timetable and commiting this to the database.
-def run_background_task(email: str, password: str, user_id: int):
+def run_background_task(email: str, password: str, user_id: int, loop):
 
     driver = getChromeDriver()
 
@@ -41,13 +42,16 @@ def run_background_task(email: str, password: str, user_id: int):
 
     # Rewind the timetable so simulate webscraping during term time.
     current_day = get_current_day_of_year(driver, wait)
+
     driver = rewind_timetable(driver, current_day, wait)
 
     base_timetable_html = find_base_timetable(driver, wait)
-    
+
     driver.quit()
 
-    asyncio.run(commit_to_database(user_id, email, base_timetable_html))
+    print("[LOGS] " + str(base_timetable_html))
+
+    asyncio.run_coroutine_threadsafe(commit_to_database(user_id, email, base_timetable_html), loop)
 
 # Starts filling out the sign in  information.
 def handle_inital_navigation(driver: WebDriver, 
@@ -340,7 +344,7 @@ into the boundaries of the first term.
 """
 def rewind_timetable(driver, currentDay, wait) -> WebDriver:
     count = 0;
-    while count < 8:
+    while count < 6:
         print("[LOGS] Rewinding the days of the year! Current day: " + str(currentDay))
 
         prev_week_button = wait.until(
@@ -362,7 +366,7 @@ def rewind_timetable(driver, currentDay, wait) -> WebDriver:
         wait.until(
             EC.element_to_be_clickable((
                 By.CLASS_NAME,
-                "ttb_change_date_next"
+                "ttb_title"
             ))
         )
 
@@ -380,6 +384,8 @@ async def commit_to_database(user_id: int,
                              email: str,
                              base_timetable_html,
                              db: AsyncSession = Depends(getDb)):
+
+    print("[LOGS] Entered the commit to database function")
 
     # add a new user into the database, accociate the user's ID with their KentVision details.
     user_details = data.Data (
@@ -488,15 +494,15 @@ def findBaseTimetableDate(currentDay, borderDay, driver, wait):
             break
         else:
             print("[LOGS] Currently looking at a timetable!")
-
-            wait.until(
+        
+            prev_week_button = wait.until(
                 EC.element_to_be_clickable((
-                    By.CLASS_NAME,
-                    "sv-btn sv-btn-default ttb_no_next_prev ttb_change_date_next"
-                ))
+                    By.CSS_SELECTOR,
+                    "button[data-ttb-action='CHANGE_DATE_PREV']"
+                ))        
             )
 
-            previousWeekButton = driver.find_element(By.CLASS_NAME, "sv-btn sv-btn-default ttb_no_next_prev ttb_change_date_next") 
+            prev_week_button.click()
 
             wait.until(
                 EC.invisibility_of_element_located((
@@ -504,17 +510,13 @@ def findBaseTimetableDate(currentDay, borderDay, driver, wait):
                     "ttb_loading_dialog"
                 ))
             )
-        
-            driver.implicitly_wait(5)
 
             wait.until(
                 EC.element_to_be_clickable((
                     By.CLASS_NAME,
-                    "sv-btn sv-btn-default ttb_no_next_prev ttb_change_date_next"
+                    "ttb_title"
                 ))
             )
-
-            previousWeekButton.click()
 
             currentDay = get_current_day_of_year(driver, wait)
             print("[LOGS] New day found! " + str(currentDay))
