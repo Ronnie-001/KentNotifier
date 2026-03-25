@@ -5,17 +5,37 @@ import { Loader2, Activity, Clock } from "lucide-react"
 import Navbar from "@/components/ui/navbar"
 
 export default function Home() {
+
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [isScraping, setIsScraping] = useState(false);
+    
+    const token = localStorage.getItem("token");
 
     const handleScrape = async () => {
         setIsScraping(true);
-        // TODO: Await your backend scraping trigger here
-        // await fetch('/api/scrape', { method: 'POST' });
-        
-        // Mock delay for UI testing
+        try {
+            const response = await fetch("http://localhost:8080/scraping-service/v1/webscrape-timetable", {
+                method: "POST",
+                body: JSON.stringify({ email: email, password: password }),
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log(data);
+            }
+
+        } catch (error) {
+            console.log("Error when trying to find the data")
+            return;
+        }
         setTimeout(() => setIsScraping(false), 2000); 
     };
-
+    
     return (
         <div className="min-h-screen bg-[#f8f9fa] font-mono text-slate-800 flex flex-col">
             
@@ -46,11 +66,44 @@ export default function Home() {
                             Compare Timetable
                         </CardTitle>
                         <CardDescription className="text-sm text-slate-500 pt-2">
-                            Click the button below to initialize the webscraper. We will fetch your latest schedule and highlight any detected differences.
+                            Enter your credentials below and click the button to initialize the webscraper. We will fetch your latest schedule and highlight any detected differences.
                         </CardDescription>
                     </CardHeader>
 
-                    <CardContent className="pb-6">
+                    <CardContent className="pb-6 space-y-4">
+                        
+                        {/* Credentials Form */}
+                        <div className="space-y-4 mb-6">
+                            <div className="space-y-2">
+                                <label htmlFor="email" className="text-sm font-medium text-slate-700">
+                                    Kent Email
+                                </label>
+                                <input 
+                                    type="email" 
+                                    id="email"
+                                    placeholder="ab123@kent.ac.uk"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                />
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label htmlFor="password" className="text-sm font-medium text-slate-700">
+                                    Password
+                                </label>
+                                <input 
+                                    type="password" 
+                                    id="password"
+                                    placeholder="••••••••"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Action Button */}
                         <Button 
                             onClick={handleScrape}
                             disabled={isScraping}

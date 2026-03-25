@@ -151,8 +151,8 @@ def lookForChanges(baseTimetableHtml: str, driver) -> Tuple[bool, list[str]]:
         # Use an explicit wait to allow for the main timetable to load.
         wait.until(
             EC.visibility_of_element_located((
-            By.ID, 
-            "timetable_title"
+                By.ID, 
+                "timetable_title"
             ))
         )
 
@@ -206,12 +206,12 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
     print(str(baseTimetableHtml))
 
     while currentDay < borderDay:
-        # wait until the timetable has loaded onto the page
-        wait.until(
+        
+        next_week_button = wait.until(
             EC.element_to_be_clickable((
-                By.ID,
-                "sv-btn sv-btn-default ttb_no_next_prev ttb_change_date_next"
-            ))
+                By.CSS_SELECTOR,
+                "button[data-ttb-action='CHANGE_DATE_NEXT']"
+            ))        
         )
 
         # Extract the HTML of the current timetable present and compare
@@ -223,14 +223,6 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
             print("[LOGS] Appending different HTML data! Current day" + str(currentDay))
             take_screenshot(driver)
 
-        # Use another explicit wait to make sure that the timetable is loaded, before moving onto the next timetable.
-        nextButton = wait.until(
-            EC.element_to_be_clickable(( 
-                By.ID,
-                "sv-btn sv-btn-default ttb_no_next_prev ttb_change_date_next"
-            ))
-        )
-        
         take_screenshot(driver)
 
         wait.until(
@@ -239,10 +231,8 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
                 "ttb_loading_dialog"
             ))
         )
-
-        # Move onto the next timetable
-        nextButton = driver.find_element(By.ID, "sv-btn sv-btn-default ttb_no_next_prev ttb_change_date_next")
-        nextButton.click()
+        
+        next_week_button.click()
 
         wait.until(
             EC.invisibility_of_element_located((
@@ -264,14 +254,26 @@ def lookForDifference(driver, baseTimetableHtml, currentDay, wait) -> Tuple[bool
 def collectTimetableData(soup) -> list[str]:
     # Filter the HTML based on the classes applied to each lecture/class
     # Only select the HTML that applies these specific classes
-    timetable_list = soup.find('ul', class_='sitsjqttitems').select('.sv-panel.sv-panel-default.sitsjqttitem.sitsjqttevent.sitsjqtteventhover.sv-tooltip-filter')
-    
+    # timetable_list = soup.find('ul', class_='sitsjqttitems').select('div.sitsjqtteventcontainer.sitsjqttitem.sitsjqttevent.sitsjqtteventhover.sv-tooltip-filter')
+    timetable_list = soup.find_all('li', class_='sitsjqtteventcontainer')
+   
     data = []
     for activity in timetable_list:
-        content = activity.select_one(".sv-row .sv-col-xs-12 div")
-        event_data = list(content.stripped_strings)
+        content = activity.select_one("div.sv-col-xs-12 div[style*='font-weight:bold']")
+        
+        if content:
+            event_raw_data = list(content.stripped_strings)
+            
+            event = {
+                "time": event_raw_data[0],
+                "module": event_raw_data[1],
+                "type": event_raw_data[2].strip(", "),
+                "name": event_raw_data[3],
+                "location": event_raw_data[5],
+                "staff": [s for s in event_raw_data[7:] if s != ',']
+            }
 
-        data.append(event_data)
+            data.append(event)
     
     return data
 
