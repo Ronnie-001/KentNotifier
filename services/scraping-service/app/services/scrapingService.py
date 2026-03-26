@@ -43,7 +43,7 @@ def run_background_task(email: str, password: str, user_id: int, loop):
     # Rewind the timetable so simulate webscraping during term time.
     current_day = get_current_day_of_year(driver, wait)
 
-    driver = rewind_timetable(driver, current_day, wait)
+    driver = rewind_timetable(driver, wait, current_day)
 
     base_timetable_html = find_base_timetable(driver, wait)
 
@@ -240,9 +240,11 @@ def handle_mfa_prompt(driver: WebDriver, wait: WebDriverWait, user_id: int) -> W
 
      return driver
 
-def navigate_to_timetable(driver, wait) -> WebDriver:
+def navigate_to_timetable(driver: WebDriver, wait: WebDriverWait) -> WebDriver:
 
     print("[LOGS] Naviagting to timetable!")
+
+    take_screenshot(driver)
 
     wait.until(
         EC.visibility_of_element_located((
@@ -293,7 +295,7 @@ def navigate_to_timetable(driver, wait) -> WebDriver:
 
     return driver
 
-def find_base_timetable(driver, wait) -> str:
+def find_base_timetable(driver: WebDriver, wait: WebDriverWait) -> str:
     try:
         currentDayofYear = get_current_day_of_year(driver, wait)
 
@@ -342,9 +344,9 @@ def get_current_day_of_year(driver: WebDriver, wait: WebDriverWait) -> int:
 Function purely for testing; used for putting the date back 
 into the boundaries of the first term.
 """
-def rewind_timetable(driver, currentDay, wait) -> WebDriver:
+def rewind_timetable(driver: WebDriver, wait: WebDriverWait, currentDay: int) -> WebDriver:
     count = 0;
-    while count < 6:
+    while count < 8:
         print("[LOGS] Rewinding the days of the year! Current day: " + str(currentDay))
 
         prev_week_button = wait.until(
@@ -377,6 +379,8 @@ def rewind_timetable(driver, currentDay, wait) -> WebDriver:
         count += 1;
 
     print("[LOGS] Rewind over!")
+    
+    take_screenshot(driver)
 
     return driver
 

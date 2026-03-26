@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom"
 import Navbar from "@/components/ui/navbar"
 import { jwtDecode } from "jwt-decode"
 
-export default function Mfa() {
+export default function MfaSearch() {
     
     const [status, setStatus] = useState("scraping");
     const [mfaCode, setMfaCode] = useState("");
@@ -55,7 +55,7 @@ export default function Mfa() {
 
                     if (data.status == "FAILED") {
                         console.log("MFA code retreival failed! redirecting back to /sync");
-                        navigate("/sync");
+                        navigate("/search");
                         return;
                     }
                 }
@@ -129,8 +129,8 @@ export default function Mfa() {
                          {/*TODO: if the MFA code is visible on the screen, grey out the "Skip to Dashboard button
                             and replace the text with: Enter the provided MFA code"*/}
                          {status === 'success' && (
-                             <Button variant="link" onClick={() => navigate("/search")} className="text-slate-500">
-                                 move to next page
+                             <Button variant="link" onClick={() => navigate("/dashboard")} className="text-slate-500">
+                                 Move to Dashboard
                              </Button>
                          )}
                     </CardFooter>

@@ -17,8 +17,8 @@ export default function Home() {
     const token = localStorage.getItem("token");
 
     if (!token) {
-        console.error("No token found")
-        return 
+        console.error("No token found");
+        return;
     }
 
     const handleScrape = async () => {

@@ -3,37 +3,38 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Loader2, Activity, Clock } from "lucide-react"
 import Navbar from "@/components/ui/navbar"
+import { useNavigate } from "react-router-dom"
 
-export default function Home() {
+export default function BeginSearch() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [isScraping, setIsScraping] = useState(false);
-    
+    const [loading, isLoading] = useState(false);
+    const navigate = useNavigate();
+
     const token = localStorage.getItem("token");
 
+    if (!token) {
+        console.error("No token found");
+        return;
+    }
+    
     const handleScrape = async () => {
-        setIsScraping(true);
-        try {
-            const response = await fetch("http://localhost:8080/scraping-service/v1/webscrape-timetable", {
-                method: "POST",
-                body: JSON.stringify({ email: email, password: password }),
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                }
-            });
+        isLoading(true);
+        await new Promise(resolve => setTimeout(resolve, 3000));
 
-            if (response.ok) {
-                const data = await response.json();
-                console.log(data);
+        fetch("http://localhost:8080/scraping-service/v1/webscrape-timetable", {
+            method: "POST",
+            body: JSON.stringify({ email: email, password: password }),
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
             }
-
-        } catch (error) {
-            console.log("Error when trying to find the data")
-            return;
-        }
-        setTimeout(() => setIsScraping(false), 2000); 
+        });
+        
+        isLoading(false);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        navigate("/mfa-search");
     };
     
     return (
@@ -47,10 +48,10 @@ export default function Home() {
                 
                 <header className="mb-8">
                     <h1 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">
-                        Dashboard
+                        Search for Differences
                     </h1>
                     <p className="text-slate-500 text-sm leading-relaxed max-w-md mx-auto">
-                        Your credentials are linked. Manually trigger a scrape to check for structural timetable updates.
+                        Manually trigger a scrape to check for structural timetable updates.
                     </p>
                 </header>
 
@@ -106,10 +107,10 @@ export default function Home() {
                         {/* Action Button */}
                         <Button 
                             onClick={handleScrape}
-                            disabled={isScraping}
+                            disabled={loading}
                             className="w-full bg-blue-900 hover:bg-blue-800 h-12 text-base gap-2 transition-all"
                         >
-                            {isScraping ? (
+                            {loading ? (
                                 <>
                                     <Loader2 className="h-5 w-5 animate-spin" />
                                     Scraping Timetable...

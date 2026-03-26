@@ -3,7 +3,9 @@ import SignIn from "./SignIn"
 import Register from "./Register"
 import Sync from "./Sync"
 import Mfa from "./Mfa"
-import Home from "./Home"
+import BeginSearch from "./BeginSearch"
+import MfaSearch from "./MfaSearch"
+import Dashboard from "./Dashboard"
 
 export default function App() {
     return (
@@ -15,10 +17,11 @@ export default function App() {
             {/* Scraping routes */}
             <Route path="/sync" element={ <Sync /> } />
             <Route path="/mfa" element={ <Mfa /> } />
+            <Route path="/search" element={ <BeginSearch /> } />
+            <Route path="/mfa-search" element={ <MfaSearch />} />
             
             {/* Dashboard routes */}
-            <Route path="/results" element={ <Register /> } />
-            <Route path="/home" element={ <Home /> } />
+            <Route path="/dashboard" element={ <Dashboard /> } />
         </Routes>
     )
 }
