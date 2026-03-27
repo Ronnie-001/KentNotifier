@@ -22,6 +22,9 @@ import com.example.kent_notifier.app.User.DTO.LoginRequestDTO;
 import com.example.kent_notifier.app.User.DTO.LoginResponseDTO;
 import com.example.kent_notifier.app.User.DTO.SignupRequestDTO;
 
+import java.util.Map;
+import java.util.HashMap;
+
 @RestController
 @RequestMapping("login-service/auth")
 public class UserController {
@@ -43,12 +46,16 @@ public class UserController {
     }
 
     @PostMapping("/v1/signup")
-    public ResponseEntity<String> signUp(@RequestBody SignupRequestDTO signupRequestDTO) {
+    public ResponseEntity<Map<String, String>> signUp(@RequestBody SignupRequestDTO signupRequestDTO) {
 
         User user = userService.createUser(signupRequestDTO);
         userRepository.save(user);
 
-        return new ResponseEntity<String>("User sucessfully created!", HttpStatus.CREATED); 
+        // Use a hashmap to return the message
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "user registered successfully!");
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/v1/signin")
@@ -59,9 +66,11 @@ public class UserController {
         String jwt = jwtUtils.generateJwtToken(authentication);
 
         LoginResponseDTO response = new LoginResponseDTO();
-
+        
+        // Set the response
         response.setToken(jwt);
         response.setExpirationTime(jwtUtils.getExpirationTimeFromJwt(jwt).getTime());
+        response.setEmail(loginRequestDTO.getEmail());
         
         return ResponseEntity.ok(response);
     }

@@ -13,7 +13,7 @@ public class UserConfig {
     CustomUserDetailsService customUserDetailsService(UserRepository userRepository) {
         return new CustomUserDetailsService(userRepository);
     }
-
+    
     @Bean
     UserService userService(RoleRepository roleRepository, UserMapper userMapper) {
         return new UserService(roleRepository, userMapper);

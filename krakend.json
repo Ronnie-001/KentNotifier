@@ -53,7 +53,7 @@
 
         {
             "endpoint": "/scraping-service/v1/webscrape-timetable",
-            "timeout": "180s",
+            "timeout": "240s",
             "method": "POST",
             "input_headers": [
                 "Authorization"
@@ -75,15 +75,70 @@
                     "host": ["http://scraping-service:8001"]
                 }
             ]
+        },
+
+        {
+            "endpoint": "/scraping-service/v1/status/{user_id}",
+            "timeout": "90s",
+            "method": "GET",
+            "input_headers": [
+                "Authorization"
+            ],
+            "extra_config": {
+               "auth/validator": {
+                   "alg": "HS512",
+                   "jwk_local_path": "./jwk.txt", 
+                   "audience": ["scraping", "notification"],
+                   "operation_debug": true,
+                   "disable_jwk_security": true,
+                   "cache": false
+               }
+            },
+           "backend": [
+                {
+                    "url_pattern": "/scraping-service/v1/status/{user_id}",
+                    "method": "GET",
+                    "host": ["http://scraping-service:8001"]
+                }
+            ]
         }
 
     ],
     "extra_config": {
         "telemetry/logging": {
             "level": "INFO",
-            "prefix": "[KRAKEND]",
+            "prefix": "[API GATEWAY LOGS]",
             "syslog": false,
             "stdout": true
+        },
+
+        "security/cors": {
+            "allow_origins": [
+                "http://localhost:5173"
+            ],
+            
+            "allow_methods": [
+                "GET",
+                "HEAD",
+                "POST",
+                "DELETE",
+                "OPTIONS"
+            ],
+            
+            "expose_headers": [
+                "Content-Length",
+                "Content-Type"
+            ],
+
+            "allow_headers": [
+                "Origin",
+                "Authorization",
+                "Content-Type"
+            ],
+
+            "max_age": "12h",
+            "allow_credentials": true,
+            "debug": true
         }
     }
 }
