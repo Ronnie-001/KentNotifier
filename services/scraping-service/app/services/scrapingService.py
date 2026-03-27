@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.table import data
 from app.dependencies import redis, baseTimetableKey
 from app.dependencies import getDb
+from app.database.dbconn import Session
 
 def getChromeDriver() -> WebDriver:
     # Set the options for the chrome driver that we will recieve.
@@ -386,19 +387,26 @@ def rewind_timetable(driver: WebDriver, wait: WebDriverWait, currentDay: int) ->
 
 async def commit_to_database(user_id: int, 
                              email: str,
-                             base_timetable_html,
+                             base_timetable_html: str,
                              db: AsyncSession = Depends(getDb)):
 
-    # add a new user into the database, accociate the user's ID with their KentVision details.
-    user_details = data.Data (
-        user_id = user_id,
-        email = email,
-        base_timetable = base_timetable_html,
-    )
+    async with Session() as db:
+        try:
+            # add a new user into the database, accociate the user's ID with their KentVision details.
+            user_details = data.Data (
+                user_id = user_id,
+                email = email,
+                base_timetable = base_timetable_html,
+            )
     
-    db.add(user_details)
-    await db.commit()
-    await db.refresh(user_details)
+            db.add(user_details)
+            await db.commit()
+            await db.refresh(user_details)
+            print(f"[LOGS] Successfully saved user {user_id} to Postgres.")
+        
+        except Exception as e:
+            print(f"[ERROR] Failed to save to Postgres: {e}")
+            await db.rollback()
 
 """
 Use to avoid StaleElementReferenceExceptions when clicking an element, 

@@ -18,6 +18,7 @@ from app.services.userDetailsService import getIdFromJwt
 from app.dependencies import redis, baseTimetableKey
 
 from bs4 import BeautifulSoup
+import json
 
 scrapingRouter = APIRouter()
 
@@ -61,35 +62,40 @@ async def checkForUpdate(details: WebscrapeTimetableModel,
             details.password
         )
 
+# Used to outstanding events throughout the term.
 def run_background_task(base_timetable_html: str | None,
                         user_id: int,
                         email: str,
                         password: str):
 
     soup = BeautifulSoup(str(base_timetable_html), "html.parser") 
-
-    # Collect the base timetable info into a list
     base_timetable_info = collect_timetable_data(soup)
- 
+
     driver = getChromeDriver()
 
     wait = WebDriverWait(driver, timeout=50)
-    
+
     driver = login_to_kent_vision(driver, wait, user_id, email, password)
 
     driver = navigate_to_timetable(driver, wait)
 
     current_day = get_current_day_of_year(driver, wait)
 
-    driver = rewind_timetable(driver, wait, current_day,)
+    driver = rewind_timetable(driver, wait, current_day)
 
     found, new_data = look_for_changes(driver, wait, str(base_timetable_html)) 
+
+    driver.quit()
 
     if found:
         collect_new_events(new_data, base_timetable_info, user_id)
     else:
         print("[LOGS] No new events found!")
-        redis.hmset(f"user:{user_id}:data", {})
+
+        redis.hset(f"user:{user_id}:state", mapping = {
+            "scraping_status": "COMPLETE",
+            "scraping_results": "[]"
+            })
 
 def collect_new_events(new_data, base_timetable_info, user_id):
 
@@ -104,16 +110,10 @@ def collect_new_events(new_data, base_timetable_info, user_id):
         # Check if any new timetable data was found
         if not new_timetable_info:
             continue
-    
-        # Find the differences between the 2 sets
+        
+        # Find the differences between the two
         added = [d for d in new_timetable_info if d not in base_timetable_info]
         removed = [d for d in base_timetable_info if d not in new_timetable_info]
-
-        print("----------------[LOGS] ADDED--------------------------")
-        print(added)
-
-        print("----------------[LOGS] REMOVED--------------------------")
-        print(removed)
 
         res = {}
 
@@ -124,8 +124,12 @@ def collect_new_events(new_data, base_timetable_info, user_id):
         date = new_timetable_info[0]["date"]
 
         res_dict[date] = res
-
-    redis.hmset(f"user:{user_id}:data", res_dict)
+    
+    # TODO: Make use of json.dumps to add the data into redis, switch to hset
+    redis.hset(f"user:{user_id}:state", mapping = {
+                "scraping_status": "COMPLETE",
+                "scraping_results": json.dumps(res_dict)
+        })
 
 def look_for_changes(driver: WebDriver, wait: WebDriverWait, base_timetable_html: str) -> Tuple[bool, list[str]]:
 
@@ -151,7 +155,7 @@ def look_for_changes(driver: WebDriver, wait: WebDriverWait, base_timetable_html
         
         print("[LOGS] Looking for outstanding timtables...")
         # Check which term you are in. Then look for any changes to the timetable.
-        found, new_data = look_for_difference(driver, base_timetable_html, current_day_of_year, wait)
+        found, new_data = look_for_difference(driver, wait, base_timetable_html, current_day_of_year)
 
         print("[LOGS] Check over!")
 
@@ -163,7 +167,7 @@ def look_for_changes(driver: WebDriver, wait: WebDriverWait, base_timetable_html
     return False, [""]
 
 # Function used to find any differences between the user's usual activities during the week
-def look_for_difference(driver, base_timetable_html, currentDay, wait) -> Tuple[bool, list[str]]:
+def look_for_difference(driver: WebDriver, wait: WebDriverWait, base_timetable_html: str, currentDay) -> Tuple[bool, list[str]]:
     print("[LOGS] Entered the look_for_difference function!") 
 
     # Use the term dates here to find out which term you are currenly in.
@@ -201,7 +205,7 @@ def look_for_difference(driver, base_timetable_html, currentDay, wait) -> Tuple[
         # Check if it differs from the base timetable 
         if (data != base_timetable_html):
             new_data.append(data)
-            print("[LOGS] Appending different HTML data! Current day" + str(currentDay))
+            print("[LOGS] Appending different HTML data! Current day: " + str(currentDay))
             take_screenshot(driver)
 
         take_screenshot(driver)
@@ -225,7 +229,7 @@ def look_for_difference(driver, base_timetable_html, currentDay, wait) -> Tuple[
         # Function uses an explicit wait to grab the current day.
         currentDay = get_current_day_of_year(driver, wait)
 
-        print("[LOGS] Moving onto the next timetable! current day: " + str(currentDay))
+        print("[LOGS] Moving onto the next timetable! Current day: " + str(currentDay))
 
     if len(new_data) != 0:
         return True, new_data
@@ -247,9 +251,10 @@ def collect_timetable_data(soup) -> list[dict]:
         if content:
             event_raw_data = list(content.stripped_strings)
             event_date = event_date_content.get_text(strip=True)
+            event_day = event_date.split(". ")[0].split(" ")[0]
             
             event = {
-                "date": event_date,
+                "date": event_day,
                 "time": event_raw_data[0],
                 "module": event_raw_data[1],
                 "type": event_raw_data[2].strip(", "),
