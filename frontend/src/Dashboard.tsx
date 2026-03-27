@@ -1,15 +1,22 @@
 import { PlusCircle, MinusCircle, Clock, MapPin, Activity } from "lucide-react"
 import Navbar from "./components/ui/navbar";
 import { jwtDecode } from "jwt-decode"
+import { useEffect, useState } from "react";
 
 // --- REUSABLE COMPONENTS ---
 
 interface TimetableEvent {
-    day: string;
+    date: string;
     time: string;
     module: string;
     type: string;
     location: string;
+    staff: string;
+}
+
+interface DifferenceState {
+    added: TimetableEvent[];
+    removed: TimetableEvent[];
 }
 
 export function RemovedEvent({ event }: { event: TimetableEvent }) {
@@ -39,7 +46,7 @@ export function RemovedEvent({ event }: { event: TimetableEvent }) {
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm text-slate-600 pl-8">
                 <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-slate-400" />
-                    <span className="font-semibold text-slate-700">{event.day}</span>
+                    <span className="font-semibold text-slate-700">{event.date}</span>
                     <span>{event.time}</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -77,7 +84,7 @@ export function AddedEvent({ event }: { event: TimetableEvent }) {
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm text-slate-600 pl-8">
                 <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-slate-400" />
-                    <span className="font-semibold text-slate-700">{event.day}</span>
+                    <span className="font-semibold text-slate-700">{event.date}</span>
                     <span>{event.time}</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -91,7 +98,11 @@ export function AddedEvent({ event }: { event: TimetableEvent }) {
 
 // --- MAIN DASHBOARD COMPONENT ---
 export default function Dashboard() {
-
+    const [differences, setDifferences] = useState<DifferenceState>({
+        added: [],
+        removed: []
+    });
+    
      // Define an interface to define our own custom JWT payload
     interface customJwtPayload  {
         sub?: string;
@@ -100,32 +111,77 @@ export default function Dashboard() {
         iat?: number;
         exp?: number;
     }
-  
+
     const token = localStorage.getItem("token");
     const decoded = token != null ? jwtDecode<customJwtPayload>(token) : null;
 
-    const grabUserData = async () => {
-        try {
-            const response = await fetch(`http://localhost:8080/scraping-service/v1/login-status/${decoded?.ID}`)
+    useEffect(() => {
+        const grabUserData = async () => {
+            try {
+                const response = await fetch(`http://localhost:8080/scraping-service/v1/status/${decoded?.ID}`, {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
 
-        } catch (error) {
-            console.error("Error when trying to recieve user data: "  + error);
-        }
-    }
+                    const data = await response.json();
+
+                    let added = [];
+                    let removed = [];
+                    
+                    try {
+                        if (data.scraping_results) {
+                            const parsed = JSON.parse(data.scraping_results);
+
+                            for (const key in parsed) {
+                                const nestedData = parsed[key];
+
+                                if (Array.isArray(nestedData.added)) {
+                                    added.push(...nestedData.added);
+                                }
+
+                                if (Array.isArray(nestedData.removed)) {
+                                    removed.push(...nestedData.removed);
+                                }
+                            }        
+                        }
+                    } catch (error) {
+                        console.error("Error when parsing the json data:" + error)
+                    }
+
+                    setDifferences({
+                        added: added,
+                        removed: removed
+                    })                    
+                }                     
+
+            } catch (error) {
+                console.error("Error when fetching user data from redis: " + error)
+            }
+        };
+
+        grabUserData();        
+
+    }, []);
+
 
     // Example data structure matching your Python backend
-    const differences = {
-        added: [
-            { day: "Monday", time: "11:00 - 12:00", module: "COMP5002", type: "LECTURE", location: "Jennison Lecture Theatre" }
-        ],
-        removed: [
-            { day: "Friday", time: "14:00 - 16:00", module: "COMP5003", type: "PC", location: "Cornwallis South PC room 1" }
-        ]
-    };
+//     const differences = {
+//         added: [
+//             { day: "Monday", time: "11:00 - 12:00", module: "COMP5002", type: "LECTURE", location: "Jennison Lecture Theatre" }
+//         ],
+//         removed: [
+//             { day: "Friday", time: "14:00 - 16:00", module: "COMP5003", type: "PC", location: "Cornwallis South PC room 1" }
+//         ]
+//     };
 
     return (
         <div className="min-h-screen bg-[#f8f9fa] font-mono text-slate-800 flex flex-col">
-            
+
             {/* Top Navigation */}
             <Navbar />
 
@@ -155,6 +211,13 @@ export default function Dashboard() {
 
                         {/* The Differences Lists */}
                         <div className="space-y-10">
+
+                            {differences.added.length === 0 && differences.removed.length === 0 && (
+                                <div className="text-center py-12 px-4">
+                                    <p className="text-slate-500 font-medium">No timetable changes detected.</p>
+                                    <p className="text-xs text-slate-400 mt-1">Your schedule is completely up to date.</p>
+                                </div>
+                            )}
                             
                             {differences.removed.length > 0 && (
                                 <div className="space-y-4">
@@ -164,7 +227,7 @@ export default function Dashboard() {
                                     </h3>
                                     <div className="grid gap-3">
                                         {differences.removed.map(event => (
-                                            <RemovedEvent key={`${event.day}-${event.time}-${event.module}`} event={event} />
+                                            <RemovedEvent key={`${event.date}-${event.time}-${event.module}`} event={event} />
                                         ))}
                                     </div>
                                 </div>
@@ -178,7 +241,7 @@ export default function Dashboard() {
                                     </h3>
                                     <div className="grid gap-3">
                                         {differences.added.map(event => (
-                                            <AddedEvent key={`${event.day}-${event.time}-${event.module}`} event={event} />
+                                            <AddedEvent key={`${event.date}-${event.time}-${event.module}`} event={event} />
                                         ))}
                                     </div>
                                 </div>

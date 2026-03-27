@@ -29,7 +29,7 @@ export default function Mfa() {
     useEffect(() => {        
         const pollForMfa = async () => {
             try {
-                const response = await fetch(`http://localhost:8080/scraping-service/v1/login-status/${decoded?.ID}`, {
+                const response = await fetch(`http://localhost:8080/scraping-service/v1/status/${decoded?.ID}`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",

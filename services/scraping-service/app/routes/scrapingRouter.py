@@ -89,12 +89,13 @@ def run_background_task(base_timetable_html: str | None,
 
     if found:
         collect_new_events(new_data, base_timetable_info, user_id)
+        print("[LOGS] Done")
     else:
         print("[LOGS] No new events found!")
 
         redis.hset(f"user:{user_id}:state", mapping = {
-            "scraping_status": "COMPLETE",
-            "scraping_results": "[]"
+                "scraping_status": "COMPLETE",
+                "scraping_results": "[]"
             })
 
 def collect_new_events(new_data, base_timetable_info, user_id):
@@ -107,7 +108,7 @@ def collect_new_events(new_data, base_timetable_info, user_id):
         soup = BeautifulSoup(str(data), "html.parser") 
         new_timetable_info = collect_timetable_data(soup)
 
-        # Check if any new timetable data was found
+        # If no new timetable data was found, then move on 
         if not new_timetable_info:
             continue
         
@@ -117,7 +118,6 @@ def collect_new_events(new_data, base_timetable_info, user_id):
 
         res = {}
 
-        res["status"] = "UPDATED"
         res["added"] = [event for event in added]
         res["removed"] = [event for event in removed]
 
