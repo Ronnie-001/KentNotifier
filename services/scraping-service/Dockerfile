@@ -2,11 +2,18 @@ FROM python:3.13-alpine
 
 WORKDIR /app
 
+# Install ChromeDriver, chromium for selenium
+RUN apk add --no-cache chromium chromium-chromedriver
+
 # copy the requirements.txt file
 COPY requirements.txt /app/requirements.txt
 
 # downlaod all dependencies for the project
-RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
+RUN apk add --no-cache --virtual .build-deps gcc python3-dev musl-dev linux-headers \
+    && pip install --no-cache-dir --upgrade -r /app/requirements.txt \
+    && apk del .build-deps
+
+ENV PYTHONUNBUFFERED=1
 
 COPY . .
 

@@ -4,7 +4,6 @@ name: kent-notifier
 
 services:
 # ------------------------------------LOGIN SERVICE AND DATABASE----------------------------------
-
   login-service:
     build: ./services/login-service/app/
     ports:
@@ -42,6 +41,8 @@ services:
       scraping-service-db:
         condition: service_healthy
         restart: true
+    volumes:
+      - ./debug_output:/app/debug_output
 
   scraping-service-db:
     image: postgres:17-alpine
@@ -63,14 +64,20 @@ services:
       start_period: 30s
       timeout: 10s
 
+  redis:
+    image: redis:alpine
+    ports:
+      - 6379:6379
+    volumes:
+      - redis-vol:/data
+
 # ------------------------------------------------------------------------------------------------
 
 # ----------------------------------------API GATEWAY---------------------------------------------
-
   krakend: 
-    image: krakend 
+    image: krakend:latest
     ports:
-      - "8080:8080" 
+      - 8080:8080 
     volumes:
       # bind the kraken.json config file & the jwk.txt file to the volume.
       - ./krakend.json:/etc/krakend/krakend.json
@@ -82,7 +89,7 @@ services:
 # ------------------------------------------------------------------------------------------------
 
 # ------------------------------------------VOLUMES-----------------------------------------------
-
 volumes:
   login-service-vol:
   scraping-service-vol:
+  redis-vol:

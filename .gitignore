@@ -1,3 +1,8 @@
-.env
 jwk.txt
+.git
+.env
 .envrc
+dooing.json
+.direnv/
+.python-version
+.direnv
